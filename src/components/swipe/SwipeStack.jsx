@@ -1,5 +1,5 @@
 // SwipeStack.jsx — gesture-driven swipe card stack with directional actions
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { useDrag } from '@use-gesture/react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Star, Check, RotateCcw } from 'lucide-react';
@@ -49,12 +49,22 @@ export default function SwipeStack({
   onShowCandidateDetail,
   onApplyConfirm,
   onMutualMatch,
+  onAllCaughtUp,
 }) {
   const [dragX, setDragX] = useState(0);
   const [dragY, setDragY] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const [exitDirection, setExitDirection] = useState(null); // 'left' | 'right' | 'up'
   const [isProcessing, setIsProcessing] = useState(false);
+
+  useEffect(() => {
+    if (queue.length === 0 && onAllCaughtUp) {
+      const timer = setTimeout(() => {
+        onAllCaughtUp();
+      }, 1500); // 1.5s delay to let user read the message
+      return () => clearTimeout(timer);
+    }
+  }, [queue.length, onAllCaughtUp]);
 
   /**
    * Handle swipe action — write to Supabase and advance queue

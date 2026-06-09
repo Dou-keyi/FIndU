@@ -35,7 +35,8 @@ export async function getCandidateGlobeNodes(profile) {
       .from('swipe_actions')
       .select('target_id')
       .eq('actor_id', profile.id)
-      .eq('target_type', 'job');
+      .eq('target_type', 'job')
+      .neq('direction', 'left');
 
     if (swipeError) throw swipeError;
 
@@ -145,7 +146,8 @@ export async function getEmployerGlobeNodes(profile) {
       .from('swipe_actions')
       .select('target_id')
       .eq('actor_id', profile.id)
-      .eq('target_type', 'candidate');
+      .eq('target_type', 'candidate')
+      .neq('direction', 'left');
 
     if (swipeError) throw swipeError;
 

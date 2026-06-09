@@ -201,6 +201,7 @@ export default function GlobePage() {
                 onShowCandidateDetail={handleShowCandidateDetail}
                 onApplyConfirm={handleApplyConfirm}
                 onMutualMatch={handleMutualMatch}
+                onAllCaughtUp={handleBackToGlobe}
               />
             </motion.div>
           )}

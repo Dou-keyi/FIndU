@@ -26,9 +26,6 @@
   transition: animation-play-state 0.3s;
 }
 
-.globe-stage:hover {
-  animation-play-state: paused;
-}
 
 @keyframes globeSpin {
   from {
@@ -65,11 +62,6 @@
   }
 }
 
-.globe-stage:hover,
-.globe-stage:hover .globe-centre,
-.globe-stage:hover .globe-orbit-node__inner {
-  animation-play-state: paused;
-}
 
 .globe-centre__avatar {
   width: 68px;
