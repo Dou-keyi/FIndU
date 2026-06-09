@@ -1,10 +1,11 @@
 // SidebarNav.jsx — Desktop navigation sidebar (md:flex)
-import React from 'react';
+import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Globe2, Newspaper, FileText, MessageSquare, Clock, LogOut } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { supabase } from '../../lib/supabase';
 import { getInitials, getAvatarColor } from '../../lib/avatarUtils';
+import LogoutConfirmModal from './LogoutConfirmModal';
 
 const NAV_ITEMS = [
   { path: '/globe', icon: Globe2, label: 'Globe' },
@@ -18,8 +19,14 @@ export default function SidebarNav() {
   const location = useLocation();
   const navigate = useNavigate();
   const { profile, user } = useAuth();
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
 
-  const handleLogout = async () => {
+  const handleLogoutClick = () => {
+    setShowLogoutModal(true);
+  };
+
+  const handleLogoutConfirm = async () => {
+    setShowLogoutModal(false);
     await supabase.auth.signOut();
     navigate('/auth');
   };
@@ -29,7 +36,8 @@ export default function SidebarNav() {
   const color = getAvatarColor(name);
 
   return (
-    <aside className="hidden md:flex flex-col w-64 h-screen fixed left-0 top-0 bg-white border-r border-gray-200 z-50">
+    <>
+      <aside className="hidden md:flex flex-col w-64 h-screen fixed left-0 top-0 bg-white border-r border-gray-200 z-50">
       {/* Brand Header */}
       <div className="flex items-center gap-3 px-6 py-8">
         <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand/10">
@@ -92,7 +100,7 @@ export default function SidebarNav() {
         </button>
 
         <button
-          onClick={handleLogout}
+          onClick={handleLogoutClick}
           className="w-full mt-2 flex items-center gap-3 px-4 py-2.5 rounded-xl text-gray-500 hover:bg-red-50 hover:text-red-600 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 font-medium text-sm"
         >
           <LogOut className="w-4 h-4" aria-hidden="true" />
@@ -100,5 +108,11 @@ export default function SidebarNav() {
         </button>
       </div>
     </aside>
+      <LogoutConfirmModal 
+        isOpen={showLogoutModal} 
+        onClose={() => setShowLogoutModal(false)} 
+        onConfirm={handleLogoutConfirm} 
+      />
+    </>
   );
 }

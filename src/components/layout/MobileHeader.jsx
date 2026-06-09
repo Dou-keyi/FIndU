@@ -4,13 +4,21 @@ import { LogOut, User } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { supabase } from '../../lib/supabase';
 import { getInitials, getAvatarColor } from '../../lib/avatarUtils';
+import LogoutConfirmModal from './LogoutConfirmModal';
 
 export default function MobileHeader() {
   const navigate = useNavigate();
   const { profile, user } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
 
-  const handleLogout = async () => {
+  const handleLogoutClick = () => {
+    setMenuOpen(false);
+    setShowLogoutModal(true);
+  };
+
+  const handleLogoutConfirm = async () => {
+    setShowLogoutModal(false);
     await supabase.auth.signOut();
     navigate('/auth');
   };
@@ -20,7 +28,8 @@ export default function MobileHeader() {
   const color = getAvatarColor(name);
 
   return (
-    <header className="md:hidden fixed top-0 left-0 right-0 h-14 bg-white/95 backdrop-blur-md border-b border-gray-100 z-50 flex items-center justify-between px-4 shadow-sm">
+    <>
+      <header className="md:hidden fixed top-0 left-0 right-0 h-14 bg-white/95 backdrop-blur-md border-b border-gray-100 z-50 flex items-center justify-between px-4 shadow-sm">
       <div className="flex items-center gap-2">
         <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand/10">
           <span className="text-xs font-bold text-brand">C</span>
@@ -57,7 +66,7 @@ export default function MobileHeader() {
                 View Profile
               </button>
               <button
-                onClick={handleLogout}
+                onClick={handleLogoutClick}
                 className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors focus-visible:outline-none focus-visible:bg-red-50 font-medium"
               >
                 <LogOut className="w-4 h-4" aria-hidden="true" />
@@ -68,5 +77,11 @@ export default function MobileHeader() {
         )}
       </div>
     </header>
+      <LogoutConfirmModal 
+        isOpen={showLogoutModal} 
+        onClose={() => setShowLogoutModal(false)} 
+        onConfirm={handleLogoutConfirm} 
+      />
+    </>
   );
 }
