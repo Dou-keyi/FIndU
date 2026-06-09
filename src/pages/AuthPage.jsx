@@ -216,7 +216,7 @@ export default function AuthPage() {
             className="w-full max-w-[440px] relative"
           >
             {/* The Glassmorphism Card */}
-            <Card className="w-full bg-[#020617]/40 backdrop-blur-3xl border border-white/10 shadow-[0_8px_32px_0_rgba(0,0,0,0.6)] overflow-hidden relative">
+            <Card className="w-full bg-[#020617]/10 backdrop-blur-lg border border-white/10 shadow-[0_8px_32px_0_rgba(0,0,0,0.6)] overflow-hidden relative">
               {/* Subtle top glow line */}
               <motion.div 
                 initial={{ scaleX: 0 }}
