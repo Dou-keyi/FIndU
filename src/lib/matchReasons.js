@@ -2,8 +2,13 @@
 import { supabase } from './supabase';
 
 const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
-const GEMINI_MODEL = 'gemini-2.5-flash';
+const GEMINI_MODEL = 'gemini-3.1-flash-lite';
 const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`;
+
+// In-memory session cache to avoid repeated API calls on page revisits
+const reasonsCache = new Map();
+const MAX_RETRIES = 2;
+const BASE_DELAY_MS = 1500;
 
 /**
  * Build prompt for candidate seeing jobs
@@ -86,43 +91,57 @@ function generateFallbackReason(item, profile, contextType) {
 }
 
 /**
- * Call Gemini API to generate match reasons
+ * Call Gemini API to generate match reasons with retry on 429
  */
 async function callGemini(prompt) {
-  try {
-    const response = await fetch(GEMINI_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: {
-          temperature: 0.7,
-          maxOutputTokens: 1024,
-          responseMimeType: 'application/json',
-        },
-      }),
-    });
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      const response = await fetch(GEMINI_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: {
+            temperature: 0.7,
+            maxOutputTokens: 1024,
+            responseMimeType: 'application/json',
+          },
+        }),
+      });
 
-    if (!response.ok) {
-      console.warn('Gemini API returned status:', response.status);
+      if (response.status === 429 || response.status === 503) {
+        if (attempt < MAX_RETRIES) {
+          const delay = BASE_DELAY_MS * Math.pow(2, attempt);
+          console.info(`Gemini API ${response.status}. Retrying in ${delay}ms... (attempt ${attempt + 1}/${MAX_RETRIES})`);
+          await new Promise((r) => setTimeout(r, delay));
+          continue;
+        }
+        console.warn(`Gemini API ${response.status} after retries, using fallback reasons.`);
+        return null;
+      }
+
+      if (!response.ok) {
+        console.warn('Gemini API returned status:', response.status);
+        return null;
+      }
+
+      const data = await response.json();
+      const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+
+      if (!text) {
+        console.warn('Gemini API returned empty text');
+        return null;
+      }
+
+      // Try to extract JSON from response
+      const cleanedText = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+      return JSON.parse(cleanedText);
+    } catch (err) {
+      console.warn('Gemini API call failed:', err.message);
       return null;
     }
-
-    const data = await response.json();
-    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-
-    if (!text) {
-      console.warn('Gemini API returned empty text');
-      return null;
-    }
-
-    // Try to extract JSON from response
-    const cleanedText = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-    return JSON.parse(cleanedText);
-  } catch (err) {
-    console.warn('Gemini API call failed:', err.message);
-    return null;
   }
+  return null;
 }
 
 /**
@@ -136,6 +155,12 @@ async function callGemini(prompt) {
 export async function generateMatchReasons(items, contextType, profile, job) {
   if (!items || items.length === 0) return {};
 
+  // Build a cache key from the item IDs + context type
+  const cacheKey = contextType + ':' + items.map((i) => i.id).sort().join(',');
+  if (reasonsCache.has(cacheKey)) {
+    return reasonsCache.get(cacheKey);
+  }
+
   // If no API key, use fallback
   if (!GEMINI_API_KEY) {
     console.info('No VITE_GEMINI_API_KEY set — using algorithmic match reasons');
@@ -147,6 +172,7 @@ export async function generateMatchReasons(items, contextType, profile, job) {
         contextType
       );
     }
+    reasonsCache.set(cacheKey, reasons);
     return reasons;
   }
 
@@ -170,6 +196,7 @@ export async function generateMatchReasons(items, contextType, profile, job) {
         contextType
       );
     }
+    reasonsCache.set(cacheKey, reasons);
     return reasons;
   }
 
@@ -182,5 +209,6 @@ export async function generateMatchReasons(items, contextType, profile, job) {
       contextType
     );
   }
+  reasonsCache.set(cacheKey, reasons);
   return reasons;
 }

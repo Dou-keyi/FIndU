@@ -179,6 +179,17 @@ export default function GlobePage() {
               exit={{ opacity: 0, y: 60 }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
             >
+              {/* Back to Globe Header */}
+              <div className="flex items-center p-4 md:p-6">
+                <button
+                  onClick={handleBackToGlobe}
+                  className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 text-white/80 hover:bg-white/10 hover:text-white transition-all backdrop-blur-md shadow-lg"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                  <span className="text-sm font-medium">Back to Globe</span>
+                </button>
+              </div>
+
               <SwipeStack
                 queue={swipeQueue}
                 setQueue={setSwipeQueue}

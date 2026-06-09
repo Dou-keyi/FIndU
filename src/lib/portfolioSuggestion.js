@@ -1,8 +1,11 @@
 // portfolioSuggestion.js — generates AI portfolio suggestions from social posts via Gemini API
 
 const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
-const GEMINI_MODEL = 'gemini-2.5-flash';
+const GEMINI_MODEL = 'gemini-3.1-flash-lite';
 const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`;
+
+const MAX_RETRIES = 2;
+const BASE_DELAY_MS = 1500;
 
 /**
  * Generate a portfolio item suggestion based on a candidate's post content
@@ -35,38 +38,52 @@ Respond ONLY with JSON in this exact shape — no markdown, no preamble:
   "tags": ["tag1", "tag2"]
 }`;
 
-  try {
-    const response = await fetch(GEMINI_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: {
-          temperature: 0.7,
-          maxOutputTokens: 512,
-          responseMimeType: 'application/json',
-        },
-      }),
-    });
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      const response = await fetch(GEMINI_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: {
+            temperature: 0.7,
+            maxOutputTokens: 512,
+            responseMimeType: 'application/json',
+          },
+        }),
+      });
 
-    if (!response.ok) {
-      console.warn('Gemini portfolio suggestion API returned status:', response.status);
+      if (response.status === 429 || response.status === 503) {
+        if (attempt < MAX_RETRIES) {
+          const delay = BASE_DELAY_MS * Math.pow(2, attempt);
+          console.info(`Gemini API ${response.status}. Retrying in ${delay}ms... (attempt ${attempt + 1}/${MAX_RETRIES})`);
+          await new Promise((r) => setTimeout(r, delay));
+          continue;
+        }
+        console.warn(`Gemini API ${response.status} after retries, skipping portfolio suggestion.`);
+        return { suggest: false };
+      }
+
+      if (!response.ok) {
+        console.warn('Gemini portfolio suggestion API returned status:', response.status);
+        return { suggest: false };
+      }
+
+      const data = await response.json();
+      const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+
+      if (!text) {
+        console.warn('Gemini returned empty text for portfolio suggestion');
+        return { suggest: false };
+      }
+
+      const cleaned = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+      const parsed = JSON.parse(cleaned);
+      return parsed;
+    } catch (err) {
+      console.warn('Portfolio suggestion failed:', err.message);
       return { suggest: false };
     }
-
-    const data = await response.json();
-    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-
-    if (!text) {
-      console.warn('Gemini returned empty text for portfolio suggestion');
-      return { suggest: false };
-    }
-
-    const cleaned = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-    const parsed = JSON.parse(cleaned);
-    return parsed;
-  } catch (err) {
-    console.warn('Portfolio suggestion failed:', err.message);
-    return { suggest: false };
   }
+  return { suggest: false };
 }
