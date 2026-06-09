@@ -11,6 +11,7 @@ import { Label } from '../components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { toast } from '../components/ui/use-toast';
 import { UniverseBackground } from '../components/UniverseBackground';
+import { useAuthStore } from '../store/authStore';
 
 export default function AuthPage() {
   const navigate = useNavigate();
@@ -24,6 +25,8 @@ export default function AuthPage() {
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState({});
   const [forgotMode, setForgotMode] = useState(false);
+  const [transitioning, setTransitioning] = useState(false);
+  const setJustLoggedIn = useAuthStore((s) => s.setJustLoggedIn);
 
   // If already authenticated, redirect
   useEffect(() => {
@@ -98,12 +101,19 @@ export default function AuthPage() {
         if (profileError) throw profileError;
 
         toast({ title: 'Account created!', description: 'Let\'s set up your profile.', variant: 'success' });
+        setJustLoggedIn(true);
+        setTransitioning(true);
+        // Wait for orbs to fade out before navigating
+        await new Promise((r) => setTimeout(r, 1500));
         navigate('/onboarding');
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
 
         toast({ title: 'Welcome back!', variant: 'success' });
+        setJustLoggedIn(true);
+        setTransitioning(true);
+        await new Promise((r) => setTimeout(r, 1500));
         navigate('/');
       }
     } catch (err) {
@@ -127,6 +137,9 @@ export default function AuthPage() {
       });
       if (error) throw error;
       toast({ title: 'Logged in as demo user', variant: 'success' });
+      setJustLoggedIn(true);
+      setTransitioning(true);
+      await new Promise((r) => setTimeout(r, 1500));
       navigate('/');
     } catch (err) {
       console.error('Demo login error:', err);
@@ -150,11 +163,15 @@ export default function AuthPage() {
     <div className="relative min-h-screen flex w-full bg-[#020617] overflow-hidden font-sans text-slate-50 selection:bg-blue-500/30">
       {/* Global Background */}
       <div className="absolute inset-0 z-0">
-        <UniverseBackground />
+        <UniverseBackground fadeOut={transitioning} />
       </div>
 
       {/* Foreground Content Container */}
-      <div className="relative z-10 flex w-full h-full min-h-screen">
+      <motion.div
+        className="relative z-10 flex w-full h-full min-h-screen"
+        animate={transitioning ? { opacity: 0, scale: 0.95 } : { opacity: 1, scale: 1 }}
+        transition={{ duration: 1.2, ease: 'easeInOut' }}
+      >
         
         {/* Left Panel - Visuals & Messaging */}
         <div className="hidden lg:flex flex-1 flex-col justify-between p-12 xl:p-24 overflow-hidden relative">
@@ -589,7 +606,7 @@ export default function AuthPage() {
             </Card>
           </motion.div>
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }

@@ -1,0 +1,436 @@
+/* Globe.css — CSS 3D orbital globe styles with deep-space luxury aesthetic */
+
+/* ========================================
+   Perspective container
+   ======================================== */
+.globe-scene {
+  width: 100%;
+  height: 100%;
+  perspective: 800px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+/* ========================================
+   3D transform stage — the rotating platform
+   ======================================== */
+.globe-stage {
+  position: relative;
+  width: 500px;
+  height: 500px;
+  transform-style: preserve-3d;
+  animation: globeSpin 40s linear infinite;
+  transition: animation-play-state 0.3s;
+}
+
+.globe-stage:hover {
+  animation-play-state: paused;
+}
+
+@keyframes globeSpin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ========================================
+   Centre node — the "You" avatar
+   ======================================== */
+.globe-centre {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  z-index: 10;
+  /* Counter-rotate so text stays readable */
+  animation: globeCounterSpin 40s linear infinite;
+}
+
+@keyframes globeCounterSpin {
+  from {
+    transform: translate(-50%, -50%) rotate(0deg);
+  }
+  to {
+    transform: translate(-50%, -50%) rotate(-360deg);
+  }
+}
+
+.globe-stage:hover,
+.globe-stage:hover .globe-centre,
+.globe-stage:hover .globe-orbit-node__inner {
+  animation-play-state: paused;
+}
+
+.globe-centre__avatar {
+  width: 68px;
+  height: 68px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #ffffff 0%, #e8e6f8 100%);
+  border: 2.5px solid #3C3489;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  font-weight: 700;
+  color: #3C3489;
+  box-shadow:
+    0 0 0 4px rgba(60, 52, 137, 0.15),
+    0 0 24px rgba(60, 52, 137, 0.25),
+    0 4px 16px rgba(0, 0, 0, 0.3);
+  position: relative;
+  overflow: hidden;
+}
+
+.globe-centre__avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+}
+
+.globe-centre__name {
+  font-size: 12px;
+  font-weight: 600;
+  color: #ffffff;
+  text-align: center;
+  white-space: nowrap;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.6);
+  letter-spacing: 0.01em;
+}
+
+.globe-centre__badge {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: rgba(60, 52, 137, 0.85);
+  color: #D4D1F7;
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(176, 170, 232, 0.3);
+}
+
+/* ========================================
+   Orbit nodes
+   ======================================== */
+.globe-orbit-node {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  /* Use CSS translate for centering — separate from framer-motion transform */
+  translate: -50% -50%;
+  z-index: 5;
+}
+
+/* Counter-rotate wrapper for readability — applied after entrance animation */
+.globe-orbit-node__inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  animation: globeCounterSpinNode 40s linear infinite;
+}
+
+@keyframes globeCounterSpinNode {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(-360deg);
+  }
+}
+
+.globe-orbit-node:hover {
+  z-index: 20;
+}
+
+.globe-orbit-node:hover .globe-orbit-node__inner .globe-orbit-node__circle {
+  transform: scale(1.15);
+}
+
+.globe-orbit-node:hover .globe-orbit-node__inner .globe-orbit-node__tooltip {
+  opacity: 1;
+  transform: translateY(-4px);
+  pointer-events: auto;
+}
+
+/* Node circle */
+.globe-orbit-node__circle {
+  border-radius: 50%;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.04) 100%);
+  backdrop-filter: blur(10px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1),
+              box-shadow 0.3s ease;
+  position: relative;
+}
+
+/* Ring 1: larger nodes */
+.globe-orbit-node--ring1 .globe-orbit-node__circle {
+  width: 50px;
+  height: 50px;
+  font-size: 16px;
+}
+
+/* Ring 2: smaller nodes */
+.globe-orbit-node--ring2 .globe-orbit-node__circle {
+  width: 38px;
+  height: 38px;
+  font-size: 13px;
+}
+
+/* Score-based ring colours */
+.globe-orbit-node--score-high .globe-orbit-node__circle {
+  border: 2.5px solid #1D9E75;
+  color: #1D9E75;
+  box-shadow:
+    0 0 0 3px rgba(29, 158, 117, 0.12),
+    0 0 20px rgba(29, 158, 117, 0.2),
+    0 2px 12px rgba(0, 0, 0, 0.3);
+}
+
+.globe-orbit-node--score-high:hover .globe-orbit-node__circle {
+  box-shadow:
+    0 0 0 3px rgba(29, 158, 117, 0.2),
+    0 0 32px rgba(29, 158, 117, 0.35),
+    0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.globe-orbit-node--score-mid .globe-orbit-node__circle {
+  border: 2.5px solid #3C3489;
+  color: #B0AAE8;
+  box-shadow:
+    0 0 0 3px rgba(60, 52, 137, 0.12),
+    0 0 20px rgba(60, 52, 137, 0.2),
+    0 2px 12px rgba(0, 0, 0, 0.3);
+}
+
+.globe-orbit-node--score-mid:hover .globe-orbit-node__circle {
+  box-shadow:
+    0 0 0 3px rgba(60, 52, 137, 0.2),
+    0 0 32px rgba(60, 52, 137, 0.35),
+    0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.globe-orbit-node--score-low .globe-orbit-node__circle {
+  border: 2px solid rgba(148, 163, 184, 0.5);
+  color: #94a3b8;
+  box-shadow:
+    0 0 12px rgba(148, 163, 184, 0.1),
+    0 2px 12px rgba(0, 0, 0, 0.3);
+}
+
+.globe-orbit-node--score-low:hover .globe-orbit-node__circle {
+  box-shadow:
+    0 0 20px rgba(148, 163, 184, 0.2),
+    0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+/* Node label */
+.globe-orbit-node__label {
+  font-size: 10px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.85);
+  text-align: center;
+  white-space: nowrap;
+  max-width: 90px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.6);
+  letter-spacing: 0.01em;
+}
+
+.globe-orbit-node__sublabel {
+  font-size: 9px;
+  color: rgba(255, 255, 255, 0.5);
+  text-align: center;
+  white-space: nowrap;
+  max-width: 80px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Tooltip */
+.globe-orbit-node__tooltip {
+  position: absolute;
+  bottom: calc(100% + 12px);
+  left: 50%;
+  transform: translateX(-50%) translateY(0);
+  background: rgba(20, 18, 47, 0.92);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(176, 170, 232, 0.2);
+  border-radius: 10px;
+  padding: 8px 12px;
+  font-size: 11px;
+  color: #D4D1F7;
+  white-space: nowrap;
+  max-width: 200px;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
+  z-index: 30;
+}
+
+.globe-orbit-node__tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: rgba(20, 18, 47, 0.92);
+}
+
+/* ========================================
+   Orbit ring traces — decorative
+   ======================================== */
+.globe-ring-trace {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  border-radius: 50%;
+  border: 1px dashed rgba(176, 170, 232, 0.08);
+  pointer-events: none;
+}
+
+.globe-ring-trace--1 {
+  width: 280px;
+  height: 280px;
+  margin-left: -140px;
+  margin-top: -140px;
+}
+
+.globe-ring-trace--2 {
+  width: 440px;
+  height: 440px;
+  margin-left: -220px;
+  margin-top: -220px;
+}
+
+/* ========================================
+   Pulse animation for high-score nodes
+   ======================================== */
+@keyframes nodePulse {
+  0%, 100% {
+    box-shadow:
+      0 0 0 3px rgba(29, 158, 117, 0.12),
+      0 0 20px rgba(29, 158, 117, 0.2),
+      0 2px 12px rgba(0, 0, 0, 0.3);
+  }
+  50% {
+    box-shadow:
+      0 0 0 5px rgba(29, 158, 117, 0.2),
+      0 0 30px rgba(29, 158, 117, 0.3),
+      0 2px 12px rgba(0, 0, 0, 0.3);
+  }
+}
+
+.globe-orbit-node--score-high .globe-orbit-node__circle {
+  animation: nodePulse 3s ease-in-out infinite;
+}
+
+/* ========================================
+   Match score badge on node
+   ======================================== */
+.globe-orbit-node__score {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  font-size: 8px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  z-index: 2;
+}
+
+.globe-orbit-node--score-high .globe-orbit-node__score {
+  background: #1D9E75;
+}
+
+.globe-orbit-node--score-mid .globe-orbit-node__score {
+  background: #3C3489;
+}
+
+.globe-orbit-node--score-low .globe-orbit-node__score {
+  background: #64748b;
+}
+
+/* ========================================
+   Responsive — mobile scale-down
+   ======================================== */
+@media (max-width: 768px) {
+  .globe-stage {
+    transform-origin: center center;
+    width: 340px;
+    height: 340px;
+  }
+
+  .globe-centre__avatar {
+    width: 52px;
+    height: 52px;
+    font-size: 18px;
+  }
+
+  .globe-orbit-node--ring1 .globe-orbit-node__circle {
+    width: 40px;
+    height: 40px;
+    font-size: 14px;
+  }
+
+  .globe-orbit-node--ring2 .globe-orbit-node__circle {
+    width: 30px;
+    height: 30px;
+    font-size: 11px;
+  }
+
+  .globe-orbit-node__label {
+    font-size: 9px;
+    max-width: 70px;
+  }
+
+  .globe-ring-trace--1 {
+    width: 190px;
+    height: 190px;
+    margin-left: -95px;
+    margin-top: -95px;
+  }
+
+  .globe-ring-trace--2 {
+    width: 300px;
+    height: 300px;
+    margin-left: -150px;
+    margin-top: -150px;
+  }
+}
+
+@media (max-width: 480px) {
+  .globe-stage {
+    width: 280px;
+    height: 280px;
+  }
+}
