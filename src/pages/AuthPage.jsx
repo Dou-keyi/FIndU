@@ -16,7 +16,7 @@ import { useAuthStore } from '../store/authStore';
 export default function AuthPage() {
   const navigate = useNavigate();
   const { user, profile } = useAuth();
-  const [mode, setMode] = useState('signup'); // 'signup' | 'login'
+  const [mode, setMode] = useState('login'); // 'signup' | 'login'
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -160,7 +160,7 @@ export default function AuthPage() {
   };
 
   return (
-    <div className="relative min-h-screen flex w-full bg-[#020617] overflow-hidden font-sans text-slate-50 selection:bg-blue-500/30">
+    <div className="relative h-[100dvh] flex w-full bg-[#020617] overflow-hidden font-sans text-slate-50 selection:bg-blue-500/30">
       {/* Global Background */}
       <div className="absolute inset-0 z-0">
         <UniverseBackground fadeOut={transitioning} />
@@ -168,7 +168,7 @@ export default function AuthPage() {
 
       {/* Foreground Content Container */}
       <motion.div
-        className="relative z-10 flex w-full h-full min-h-screen"
+        className="relative z-10 flex w-full h-full h-[100dvh]"
         animate={transitioning ? { opacity: 0, scale: 0.95 } : { opacity: 1, scale: 1 }}
         transition={{ duration: 1.2, ease: 'easeInOut' }}
       >
@@ -225,7 +225,7 @@ export default function AuthPage() {
         </div>
 
         {/* Right Panel - Auth Form */}
-        <div className="flex-1 flex items-center justify-center p-6 sm:p-12 relative z-10 lg:pl-0">
+        <div className="flex-1 flex items-center justify-center p-6 sm:p-12 relative z-10 lg:pl-0 overflow-y-auto hide-scrollbar">
           <motion.div 
             initial={{ opacity: 0, x: 30 }}
             animate={{ opacity: 1, x: 0 }}
@@ -279,9 +279,9 @@ export default function AuthPage() {
               </CardHeader>
 
               <CardContent className="relative z-10 pt-6">
-                <motion.form layout="position" onSubmit={handleSubmit} className="space-y-5">
+                <form onSubmit={handleSubmit} className="space-y-5">
                   {/* Email */}
-                  <motion.div layout className="space-y-2">
+                  <div className="space-y-2">
                     <Label htmlFor="auth-email" className="text-slate-200 drop-shadow-sm font-medium">Email</Label>
                     <Input
                       id="auth-email"
@@ -299,18 +299,18 @@ export default function AuthPage() {
                         </motion.p>
                       )}
                     </AnimatePresence>
-                  </motion.div>
+                  </div>
 
                   {/* Password (hidden in forgot mode) */}
-                  <AnimatePresence mode="popLayout">
+                  <AnimatePresence>
                     {!forgotMode && (
                       <motion.div
                         key="password-field"
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: "auto" }}
-                        exit={{ opacity: 0, height: 0 }}
-                        transition={{ duration: 0.3 }}
-                        className="space-y-2 overflow-hidden"
+                        initial={{ opacity: 0, y: -8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -8 }}
+                        transition={{ duration: 0.15 }}
+                        className="space-y-2"
                       >
                         <Label htmlFor="auth-password" className="text-slate-200 drop-shadow-sm font-medium">Password</Label>
                         <div className="relative">
@@ -345,15 +345,15 @@ export default function AuthPage() {
                   </AnimatePresence>
 
                   {/* Confirm Password (signup only) */}
-                  <AnimatePresence mode="popLayout">
+                  <AnimatePresence>
                     {!forgotMode && mode === 'signup' && (
                       <motion.div
                         key="confirm-password-field"
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: "auto" }}
-                        exit={{ opacity: 0, height: 0 }}
-                        transition={{ duration: 0.3 }}
-                        className="space-y-2 overflow-hidden"
+                        initial={{ opacity: 0, y: -8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -8 }}
+                        transition={{ duration: 0.15 }}
+                        className="space-y-2"
                       >
                         <Label htmlFor="auth-confirm-password" className="text-slate-200 drop-shadow-sm font-medium">Confirm password</Label>
                         <Input
@@ -377,15 +377,15 @@ export default function AuthPage() {
                   </AnimatePresence>
 
                   {/* Role Selector (signup only) */}
-                  <AnimatePresence mode="popLayout">
+                  <AnimatePresence>
                     {!forgotMode && mode === 'signup' && (
                       <motion.div
                         key="role-field"
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: "auto" }}
-                        exit={{ opacity: 0, height: 0 }}
-                        transition={{ duration: 0.3 }}
-                        className="space-y-3 overflow-hidden"
+                        initial={{ opacity: 0, y: -8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -8 }}
+                        transition={{ duration: 0.15 }}
+                        className="space-y-3"
                       >
                         <div className="pt-2">
                           <Label className="text-slate-200 block mb-3 drop-shadow-sm font-medium">I am…</Label>
@@ -445,7 +445,7 @@ export default function AuthPage() {
                   </AnimatePresence>
 
                   {/* Submit */}
-                  <motion.div layout className="pt-2">
+                  <div className="pt-2">
                     <Button 
                       type="submit" 
                       className="w-full bg-blue-500 hover:bg-blue-400 text-white border border-blue-400/50 shadow-[0_0_20px_rgba(59,130,246,0.4)] hover:shadow-[0_0_30px_rgba(59,130,246,0.6)] transition-all h-12 flex items-center justify-center overflow-hidden relative font-semibold text-base" 
@@ -466,18 +466,18 @@ export default function AuthPage() {
                         )}
                       </AnimatePresence>
                     </Button>
-                  </motion.div>
+                  </div>
 
                   {/* Forgot password (login only) */}
-                  <AnimatePresence mode="popLayout">
+                  <AnimatePresence>
                     {!forgotMode && mode === 'login' && (
                       <motion.div 
                         key="forgot-password"
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: "auto" }}
-                        exit={{ opacity: 0, height: 0 }}
-                        transition={{ duration: 0.3 }}
-                        className="flex justify-center pt-1 overflow-hidden"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.15 }}
+                        className="flex justify-center pt-1"
                       >
                         <button
                           type="button"
@@ -491,15 +491,15 @@ export default function AuthPage() {
                   </AnimatePresence>
                   
                   {/* Back to login (forgot mode only) */}
-                  <AnimatePresence mode="popLayout">
+                  <AnimatePresence>
                     {forgotMode && (
                       <motion.div 
                         key="back-to-login"
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: "auto" }}
-                        exit={{ opacity: 0, height: 0 }}
-                        transition={{ duration: 0.3 }}
-                        className="flex justify-center pt-1 overflow-hidden"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.15 }}
+                        className="flex justify-center pt-1"
                       >
                         <button
                           type="button"
@@ -511,18 +511,18 @@ export default function AuthPage() {
                       </motion.div>
                     )}
                   </AnimatePresence>
-                </motion.form>
+                </form>
 
                 {/* Mode toggle */}
-                <AnimatePresence mode="popLayout">
+                <AnimatePresence>
                   {!forgotMode && (
                     <motion.div 
                       key="mode-toggle"
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: "auto" }}
-                      exit={{ opacity: 0, height: 0 }}
-                      transition={{ duration: 0.3 }}
-                      className="mt-6 text-center text-sm text-slate-300 overflow-hidden"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.15 }}
+                      className="mt-6 text-center text-sm text-slate-300"
                     >
                       <AnimatePresence mode="wait">
                         <motion.div
@@ -562,15 +562,15 @@ export default function AuthPage() {
                 </AnimatePresence>
 
                 {/* Demo accounts */}
-                <AnimatePresence mode="popLayout">
+                <AnimatePresence>
                   {!forgotMode && (
                     <motion.div 
                       key="demo-accounts"
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: "auto" }}
-                      exit={{ opacity: 0, height: 0 }}
-                      transition={{ duration: 0.3 }}
-                      className="overflow-hidden"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.15 }}
+                      className=""
                     >
                       <div className="mt-6 border-t border-white/10 pt-6">
                         <p className="text-xs text-center text-slate-400 mb-4 uppercase tracking-wider font-semibold drop-shadow-sm">Demo accounts</p>
