@@ -1,6 +1,7 @@
 // globeData.js — fetches and scores globe nodes for candidate and employer views
 import { supabase } from './supabase';
 import { generateMatchReasons } from './matchReasons';
+import { computeMatchScore } from './matchScore';
 
 /**
  * Assign ring and angle positions to a sorted list of nodes
@@ -14,23 +15,6 @@ function assignPositions(nodes) {
     }
     return { ...node, ring: 2, angle: 45 + (i - 4) * 90 };
   });
-}
-
-/**
- * Compute match score between a candidate's skills and a job's required skills
- */
-function computeMatchScore(candidateSkills, jobSkills, candidateWorkTypes, jobWorkType) {
-  const profileSkillsLower = (candidateSkills || []).map((s) => s.toLowerCase());
-  const jobSkillsLower = (jobSkills || []).map((s) => s.toLowerCase());
-
-  const overlap = profileSkillsLower.filter((s) => jobSkillsLower.includes(s));
-  const skillOverlap =
-    jobSkillsLower.length > 0 ? overlap.length / jobSkillsLower.length : 0;
-
-  const workTypeMatch =
-    jobWorkType && (candidateWorkTypes || []).includes(jobWorkType) ? 0.2 : 0;
-
-  return Math.min(1, skillOverlap * 0.8 + workTypeMatch);
 }
 
 /**

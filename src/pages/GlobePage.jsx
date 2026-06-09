@@ -1,12 +1,11 @@
 // GlobePage.jsx — orchestrates Globe view and Swipe card flow for job/candidate discovery
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, LogOut } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { getCandidateGlobeNodes, getEmployerGlobeNodes } from '../lib/globeData';
 import { UniverseBackground } from '../components/UniverseBackground';
 import Globe from '../components/globe/Globe';
-import BottomNav from '../components/BottomNav';
 import SwipeStack from '../components/swipe/SwipeStack';
 import JobDetailSheet from '../components/swipe/JobDetailSheet';
 import CandidatePortfolioSheet from '../components/swipe/CandidatePortfolioSheet';
@@ -124,55 +123,9 @@ export default function GlobePage() {
       {/* Deep-space background */}
       <UniverseBackground showConstellation={false} />
 
-      {/* Top bar */}
-      <motion.header
-        className="relative z-30 flex items-center justify-between px-4 py-3"
-        initial={justLoggedIn ? { opacity: 0, y: -20 } : false}
-        animate={showContent ? { opacity: 1, y: 0 } : {}}
-        transition={{ duration: 0.8, delay: 0.2, ease: 'easeOut' }}
-      >
-        {mode === 'swipe' ? (
-          <button
-            onClick={handleBackToGlobe}
-            className="flex items-center gap-1.5 text-sm font-medium text-white/70 hover:text-white transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Back to Globe
-          </button>
-        ) : (
-          <div className="flex items-center gap-2">
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand/20 backdrop-blur-sm border border-brand-300/20">
-              <span className="text-xs font-bold text-brand-200">C</span>
-            </div>
-            <span className="font-semibold text-sm text-white/80 tracking-wide">
-              Career OS
-            </span>
-          </div>
-        )}
-
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-full bg-brand/30 backdrop-blur-sm border border-brand-300/20 flex items-center justify-center">
-              <span className="text-[10px] font-bold text-brand-200">
-                {userInitials}
-              </span>
-            </div>
-            <span className="text-xs text-white/50 hidden sm:block">
-              {profile?.full_name}
-            </span>
-          </div>
-          <button
-            onClick={signOut}
-            className="flex items-center gap-1 text-xs text-white/40 hover:text-white/70 transition-colors"
-            aria-label="Sign out"
-          >
-            <LogOut className="w-3.5 h-3.5" />
-          </button>
-        </div>
-      </motion.header>
 
       {/* Main content area */}
-      <main className="relative z-20 flex-1 flex flex-col" style={{ paddingBottom: 68 }}>
+      <main className="relative z-20 flex-1 flex flex-col">
         <AnimatePresence mode="wait">
           {mode === 'globe' ? (
             <motion.div
@@ -242,15 +195,6 @@ export default function GlobePage() {
           )}
         </AnimatePresence>
       </main>
-
-      {/* Bottom navigation */}
-      <motion.div
-        initial={justLoggedIn ? { opacity: 0, y: 30 } : false}
-        animate={showContent ? { opacity: 1, y: 0 } : {}}
-        transition={{ duration: 0.6, delay: 0.7, ease: 'easeOut' }}
-      >
-        <BottomNav />
-      </motion.div>
 
       {/* Sheets & Modals */}
       <JobDetailSheet

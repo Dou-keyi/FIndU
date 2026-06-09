@@ -51,7 +51,7 @@ function JobCard({ node, onShowMore }) {
         <div
           className="flex-shrink-0 w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-sm shadow-md"
           style={{
-            background: `linear-gradient(135deg, #3C3489 0%, #5B4FC7 100%)`,
+            background: `linear-gradient(135deg, #1E40AF 0%, #3B82F6 100%)`,
           }}
         >
           {getInitials(node.company_name || node.sublabel)}

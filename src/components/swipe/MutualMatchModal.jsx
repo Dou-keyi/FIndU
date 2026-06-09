@@ -3,6 +3,7 @@ import React, { useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { MessageSquare, ArrowRight } from 'lucide-react';
+import { supabase } from '../../lib/supabase';
 
 /**
  * Decorative particles for celebration effect
@@ -16,7 +17,7 @@ function CelebrationParticles() {
       size: Math.random() * 6 + 3,
       delay: Math.random() * 0.8,
       duration: Math.random() * 1.5 + 1,
-      color: ['#1D9E75', '#3C3489', '#D4D1F7', '#15B886', '#B0AAE8', '#FFD700'][
+      color: ['#1D9E75', '#3B82F6', '#BFDBFE', '#15B886', '#93C5FD', '#FFD700'][
         Math.floor(Math.random() * 6)
       ],
     }));
@@ -54,6 +55,7 @@ function CelebrationParticles() {
 
 export default function MutualMatchModal({ matchedNode, role, isOpen, onClose }) {
   const navigate = useNavigate();
+  const [isNavigating, setIsNavigating] = React.useState(false);
 
   if (!matchedNode) return null;
 
@@ -133,14 +135,38 @@ export default function MutualMatchModal({ matchedNode, role, isOpen, onClose })
               transition={{ delay: 0.5 }}
             >
               <button
-                onClick={() => {
-                  onClose();
-                  navigate('/messaging');
+                onClick={async () => {
+                  if (isNavigating || !matchedNode) return;
+                  setIsNavigating(true);
+                  try {
+                    // Find the thread for this match
+                    // This relies on the matches query taking candidate/employer from the node
+                    // but for demo purposes, we can navigate and the messaging page defaults to Chats tab
+                    // To do it perfectly, we would fetch the thread ID
+                    const { data } = await supabase
+                      .from('matches')
+                      .select('message_threads(id)')
+                      .eq(role === 'candidate' ? 'job_id' : 'candidate_id', matchedNode.id)
+                      .order('matched_at', { ascending: false })
+                      .limit(1)
+                      .single();
+                      
+                    const threadId = data?.message_threads?.[0]?.id;
+                    
+                    onClose();
+                    navigate('/messaging', { state: { openThreadId: threadId } });
+                  } catch (e) {
+                    onClose();
+                    navigate('/messaging');
+                  } finally {
+                    setIsNavigating(false);
+                  }
                 }}
-                className="flex items-center justify-center gap-2 py-3.5 px-6 rounded-xl bg-white text-brand font-semibold text-sm shadow-lg hover:bg-gray-50 transition-colors"
+                disabled={isNavigating}
+                className="flex items-center justify-center gap-2 py-3.5 px-6 rounded-xl bg-white text-brand font-semibold text-sm shadow-lg hover:bg-gray-50 transition-colors disabled:opacity-70"
               >
                 <MessageSquare className="w-4 h-4" />
-                Send a message
+                {isNavigating ? 'Opening...' : 'Send a message'}
               </button>
               <button
                 onClick={onClose}

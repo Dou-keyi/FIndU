@@ -9,7 +9,7 @@
     --foreground: 240 10% 3.9%;
     --card: 0 0% 100%;
     --card-foreground: 240 10% 3.9%;
-    --primary: 249 44% 37%;
+    --primary: 221.2 83.2% 53.3%;
     --primary-foreground: 0 0% 100%;
     --secondary: 240 4.8% 95.9%;
     --secondary-foreground: 240 5.9% 10%;
@@ -21,7 +21,7 @@
     --destructive-foreground: 0 0% 98%;
     --border: 240 5.9% 90%;
     --input: 240 5.9% 90%;
-    --ring: 249 44% 37%;
+    --ring: 221.2 83.2% 53.3%;
     --radius: 0.5rem;
   }
 
@@ -74,18 +74,18 @@
 }
 
 .skill-chip--unselected:hover {
-  border-color: #B0AAE8;
-  color: #3C3489;
+  border-color: #60A5FA;
+  color: #3B82F6;
 }
 
 .skill-chip--selected {
-  border-color: #3C3489;
-  background-color: #3C3489;
+  border-color: #3B82F6;
+  background-color: #3B82F6;
   color: white;
 }
 
 .skill-chip--selected:hover {
-  background-color: #2A2563;
+  background-color: #2563EB;
 }
 
 /* Safe area padding for bottom nav on mobile */
@@ -127,4 +127,13 @@
   background: rgba(255, 255, 255, 0.08);
   backdrop-filter: blur(16px);
   border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Messaging scroll area */
+.messaging-scroll {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+.messaging-scroll::-webkit-scrollbar {
+  display: none;
 }
