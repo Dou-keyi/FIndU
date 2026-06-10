@@ -11,6 +11,7 @@ import { Label } from '../ui/label';
 import { Card, CardContent } from '../ui/card';
 import { Select } from '../ui/select';
 import { Badge } from '../ui/badge';
+import { Textarea } from '../ui/textarea';
 import { toast } from '../ui/use-toast';
 import StepIndicator from './StepIndicator';
 import SkillSelector from './SkillSelector';
@@ -19,6 +20,7 @@ const INDUSTRIES = ['Technology', 'Finance', 'Healthcare', 'E-commerce', 'Logist
 const HEADCOUNT_RANGES = ['1–10', '11–50', '51–200', '201–1000', '1000+'];
 const EXPERIENCE_LEVELS = ['Junior', 'Mid', 'Senior'];
 const WORK_TYPES = ['Remote', 'Hybrid', 'On-site'];
+const POSITION_TYPES = ['Full-time', 'Part-time', 'Contract', 'Internship', 'Freelance'];
 const STEP_LABELS = ['Company', 'First Job', 'Verify'];
 
 export default function EmployerWizard() {
@@ -37,9 +39,13 @@ export default function EmployerWizard() {
 
   // Step 2 — First Job
   const [jobTitle, setJobTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [responsibilities, setResponsibilities] = useState('');
+  const [benefits, setBenefits] = useState('');
   const [requiredSkills, setRequiredSkills] = useState([]);
   const [experienceLevel, setExperienceLevel] = useState('');
   const [workType, setWorkType] = useState('');
+  const [positionType, setPositionType] = useState('');
   const [salaryMin, setSalaryMin] = useState('');
   const [salaryMax, setSalaryMax] = useState('');
 
@@ -55,9 +61,13 @@ export default function EmployerWizard() {
 
     if (step === 2) {
       if (!jobTitle.trim()) newErrors.jobTitle = 'Job title is required';
+      if (!description.trim()) newErrors.description = 'Job description is required';
+      if (!responsibilities.trim()) newErrors.responsibilities = 'Responsibilities are required';
+      if (!benefits.trim()) newErrors.benefits = 'Benefits are required';
       if (requiredSkills.length < 1) newErrors.requiredSkills = 'Select at least 1 required skill';
       if (!experienceLevel) newErrors.experienceLevel = 'Experience level is required';
       if (!workType) newErrors.workType = 'Work type is required';
+      if (!positionType) newErrors.positionType = 'Position type is required';
     }
 
     setErrors(newErrors);
@@ -102,9 +112,13 @@ export default function EmployerWizard() {
           company_id: companyData.id,
           posted_by: user.id,
           title: jobTitle,
+          description,
+          responsibilities: responsibilities.split('\n').map(s => s.trim()).filter(Boolean),
+          benefits: benefits.split('\n').map(s => s.trim()).filter(Boolean),
           skills_required: requiredSkills,
           experience_level: experienceLevel.toLowerCase(),
           work_type: workType.toLowerCase(),
+          position_type: positionType,
           salary_min: salaryMin ? parseInt(salaryMin, 10) : null,
           salary_max: salaryMax ? parseInt(salaryMax, 10) : null,
           currency: 'MYR',
@@ -264,6 +278,42 @@ export default function EmployerWizard() {
             </div>
 
             <div className="space-y-2">
+              <Label htmlFor="job-description">Job description</Label>
+              <Textarea
+                id="job-description"
+                placeholder="Overview of the role..."
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                className={errors.description ? 'border-red-500 min-h-[100px]' : 'min-h-[100px]'}
+              />
+              {errors.description && <p className="text-xs text-red-500">{errors.description}</p>}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="job-responsibilities">Responsibilities (one per line)</Label>
+              <Textarea
+                id="job-responsibilities"
+                placeholder="- Build amazing features&#10;- Mentor junior devs"
+                value={responsibilities}
+                onChange={(e) => setResponsibilities(e.target.value)}
+                className={errors.responsibilities ? 'border-red-500 min-h-[100px]' : 'min-h-[100px]'}
+              />
+              {errors.responsibilities && <p className="text-xs text-red-500">{errors.responsibilities}</p>}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="job-benefits">Benefits & Perks (one per line)</Label>
+              <Textarea
+                id="job-benefits"
+                placeholder="- Health Insurance&#10;- Remote Work"
+                value={benefits}
+                onChange={(e) => setBenefits(e.target.value)}
+                className={errors.benefits ? 'border-red-500 min-h-[80px]' : 'min-h-[80px]'}
+              />
+              {errors.benefits && <p className="text-xs text-red-500">{errors.benefits}</p>}
+            </div>
+
+            <div className="space-y-2">
               <Label>Required skills</Label>
               <SkillSelector
                 selected={requiredSkills}
@@ -274,6 +324,22 @@ export default function EmployerWizard() {
             </div>
 
             <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="position-type">Position type</Label>
+                <Select
+                  id="position-type"
+                  value={positionType}
+                  onChange={(e) => setPositionType(e.target.value)}
+                  className={errors.positionType ? 'border-red-500' : ''}
+                >
+                  <option value="">Select…</option>
+                  {POSITION_TYPES.map((pt) => (
+                    <option key={pt} value={pt}>{pt}</option>
+                  ))}
+                </Select>
+                {errors.positionType && <p className="text-xs text-red-500">{errors.positionType}</p>}
+              </div>
+
               <div className="space-y-2">
                 <Label htmlFor="experience-level">Experience level</Label>
                 <Select
@@ -306,6 +372,7 @@ export default function EmployerWizard() {
                 {errors.workType && <p className="text-xs text-red-500">{errors.workType}</p>}
               </div>
             </div>
+
 
             <div className="space-y-2">
               <Label>Salary range (MYR / month)</Label>

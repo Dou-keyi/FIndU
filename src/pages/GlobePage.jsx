@@ -7,7 +7,7 @@ import { getCandidateGlobeNodes, getEmployerGlobeNodes } from '../lib/globeData'
 import { UniverseBackground } from '../components/UniverseBackground';
 import Globe from '../components/globe/Globe';
 import SwipeStack from '../components/swipe/SwipeStack';
-import JobDetailSheet from '../components/swipe/JobDetailSheet';
+import JobDetailModal from '../components/swipe/JobDetailModal';
 import CandidatePortfolioSheet from '../components/swipe/CandidatePortfolioSheet';
 import ApplyConfirmSheet from '../components/swipe/ApplyConfirmSheet';
 import MutualMatchModal from '../components/swipe/MutualMatchModal';
@@ -121,6 +121,10 @@ export default function GlobePage() {
 
       if (error && error.code !== '23505') throw error;
       setApplyConfirmNode({ ...job, title: job.title, company_name: job.company?.name });
+      setNodes(prev => prev.map(n => n.id === job.id ? { ...n, has_applied: true } : n));
+      if (jobDetailNode?.id === job.id) {
+        setJobDetailNode(prev => ({ ...prev, has_applied: true }));
+      }
     } catch (err) {
       console.error('Failed to apply:', err);
     }
@@ -238,18 +242,12 @@ export default function GlobePage() {
       </main>
 
       {/* Sheets & Modals */}
-      <JobDetailSheet
+      <JobDetailModal
         node={jobDetailNode}
         isOpen={!!jobDetailNode}
         onClose={() => setJobDetailNode(null)}
         onApply={() => {
-          // Trigger a right swipe from the detail sheet
-          if (swipeQueue.length > 0) {
-            // We'll handle this by simulating a right swipe
-            setJobDetailNode(null);
-          }
-        }}
-        onSkip={() => {
+          if (jobDetailNode) handleJobApply(jobDetailNode);
           setJobDetailNode(null);
         }}
       />

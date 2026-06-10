@@ -12,7 +12,7 @@ import PostCard from '../components/feed/PostCard';
 import PostComposerSheet from '../components/feed/PostComposerSheet';
 import JobStripCard from '../components/feed/JobStripCard';
 import FeedJobCard from '../components/feed/FeedJobCard';
-import JobDetailSheet from '../components/swipe/JobDetailSheet';
+import JobDetailModal from '../components/swipe/JobDetailModal';
 import ApplyConfirmSheet from '../components/swipe/ApplyConfirmSheet';
 
 const TABS = [
@@ -101,6 +101,11 @@ export default function FeedPage() {
 
       if (error && error.code !== '23505') throw error;
       setApplyConfirmNode({ ...job, title: job.title, company_name: job.company?.name });
+      setJobs(prev => prev.map(j => j.id === job.id ? { ...j, has_applied: true } : j));
+      setTopJobs(prev => prev.map(j => j.id === job.id ? { ...j, has_applied: true } : j));
+      if (jobDetailNode?.id === job.id) {
+        setJobDetailNode(prev => ({ ...prev, has_applied: true }));
+      }
     } catch (err) {
       console.error('Failed to apply:', err);
     }
@@ -357,7 +362,7 @@ export default function FeedPage() {
       />
 
       {/* Sheets */}
-      <JobDetailSheet
+      <JobDetailModal
         node={jobDetailNode}
         isOpen={!!jobDetailNode}
         onClose={() => setJobDetailNode(null)}
@@ -365,7 +370,6 @@ export default function FeedPage() {
           if (jobDetailNode) handleJobApply(jobDetailNode);
           setJobDetailNode(null);
         }}
-        onSkip={() => setJobDetailNode(null)}
       />
       <ApplyConfirmSheet
         node={applyConfirmNode}

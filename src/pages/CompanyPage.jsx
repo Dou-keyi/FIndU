@@ -8,7 +8,7 @@ import { supabase } from '../lib/supabase';
 import { toggleFollow, checkIsFollowing, getFollowerCount } from '../lib/feedData';
 import { getInitials, getAvatarColor, getBrandTint } from '../lib/avatarUtils';
 import FeedJobCard from '../components/feed/FeedJobCard';
-import JobDetailSheet from '../components/swipe/JobDetailSheet';
+import JobDetailModal from '../components/swipe/JobDetailModal';
 import ApplyConfirmSheet from '../components/swipe/ApplyConfirmSheet';
 
 export default function CompanyPage() {
@@ -382,7 +382,7 @@ export default function CompanyPage() {
       </main>
 
       {/* Job detail sheet */}
-      <JobDetailSheet
+      <JobDetailModal
         node={jobDetailNode}
         isOpen={!!jobDetailNode}
         onClose={() => setJobDetailNode(null)}
@@ -390,7 +390,6 @@ export default function CompanyPage() {
           if (jobDetailNode) handleJobApply(jobDetailNode);
           setJobDetailNode(null);
         }}
-        onSkip={() => setJobDetailNode(null)}
       />
 
       {/* Apply confirmation */}

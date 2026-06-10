@@ -60,8 +60,25 @@ export async function getFeedJobs(userProfile) {
 
     if (error) throw error;
 
+    let appliedJobIds = new Set();
+    if (userProfile?.id) {
+      const { data: apps } = await supabase
+        .from('applications')
+        .select('job_id, status')
+        .eq('candidate_id', userProfile.id);
+      
+      if (apps) {
+        apps.forEach(app => {
+          if (app.status !== 'rejected') {
+            appliedJobIds.add(app.job_id);
+          }
+        });
+      }
+    }
+
     const jobs = (data || []).map((job) => ({
       ...job,
+      has_applied: appliedJobIds.has(job.id),
       matchScore: userProfile
         ? computeMatchScore(
             userProfile.skills,
@@ -204,8 +221,25 @@ export async function searchJobs(userProfile, filters = {}) {
 
     if (error) throw error;
 
+    let appliedJobIds = new Set();
+    if (userProfile?.id) {
+      const { data: apps } = await supabase
+        .from('applications')
+        .select('job_id, status')
+        .eq('candidate_id', userProfile.id);
+      
+      if (apps) {
+        apps.forEach(app => {
+          if (app.status !== 'rejected') {
+            appliedJobIds.add(app.job_id);
+          }
+        });
+      }
+    }
+
     const jobs = (data || []).map((job) => ({
       ...job,
+      has_applied: appliedJobIds.has(job.id),
       matchScore: userProfile
         ? computeMatchScore(
             userProfile.skills,

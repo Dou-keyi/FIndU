@@ -43,6 +43,13 @@ export default function JobsListSection({ profile, onJobClick, onJobApply }) {
     setFilters(prev => ({ ...prev, [name]: value }));
   };
 
+  const handleApplyClick = async (job) => {
+    if (onJobApply) {
+      await onJobApply(job);
+      setJobs(prev => prev.map(j => j.id === job.id ? { ...j, has_applied: true } : j));
+    }
+  };
+
   const workTypes = [
     { id: 'all', label: 'All Types' },
     { id: 'remote', label: 'Remote' },
@@ -170,7 +177,7 @@ export default function JobsListSection({ profile, onJobClick, onJobApply }) {
                   <FeedJobCard
                     job={job}
                     onViewDetail={onJobClick}
-                    onApply={onJobApply}
+                    onApply={handleApplyClick}
                   />
                 </motion.div>
               ))

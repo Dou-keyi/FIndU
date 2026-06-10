@@ -113,7 +113,7 @@ export default function FeedJobCard({ job, onViewDetail, onApply }) {
             <button
               onClick={handleApply}
               disabled={applying || job.has_applied}
-              className={`flex-[2] py-2 rounded-xl text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand flex items-center justify-center gap-2 ${
+              className={`flex-1 py-2 rounded-xl text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand flex items-center justify-center gap-2 ${
                 job.has_applied
                   ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
                   : 'bg-brand text-white hover:bg-brand-dark shadow-sm'
