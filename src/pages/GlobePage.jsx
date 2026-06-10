@@ -78,7 +78,9 @@ export default function GlobePage() {
   const handleNodeClick = useCallback(
     (node) => {
       setActiveNode(node);
-      setSwipeQueue([...nodes]); // Start swiping from all nodes
+      // Place the clicked node at the front of the queue
+      const reorderedNodes = [node, ...nodes.filter((n) => n.id !== node.id)];
+      setSwipeQueue(reorderedNodes);
       setMode('swipe');
     },
     [nodes]

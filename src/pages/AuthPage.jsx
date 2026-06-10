@@ -18,6 +18,8 @@ export default function AuthPage() {
   const { user, profile } = useAuth();
   const [mode, setMode] = useState('login'); // 'signup' | 'login'
   const [email, setEmail] = useState('');
+  const [fullName, setFullName] = useState('');
+  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [role, setRole] = useState(''); // 'candidate' | 'employer'
@@ -54,6 +56,13 @@ export default function AuthPage() {
       }
 
       if (mode === 'signup') {
+        if (!fullName.trim()) {
+          newErrors.fullName = 'Full name is required';
+        }
+        if (!phone.trim()) {
+          newErrors.phone = 'Phone number is required';
+        }
+
         if (!confirmPassword) {
           newErrors.confirmPassword = 'Please confirm your password';
         } else if (password !== confirmPassword) {
@@ -95,7 +104,8 @@ export default function AuthPage() {
         const { error: profileError } = await supabase.from('profiles').insert({
           id: data.user.id,
           role,
-          full_name: '',
+          full_name: fullName.trim(),
+          phone: phone.trim(),
           onboarding_complete: false,
         });
         if (profileError) throw profileError;
@@ -225,12 +235,12 @@ export default function AuthPage() {
         </div>
 
         {/* Right Panel - Auth Form */}
-        <div className="flex-1 flex items-center justify-center p-6 sm:p-12 relative z-10 lg:pl-0 overflow-y-auto hide-scrollbar">
+        <div className="flex-1 flex flex-col p-6 sm:p-12 relative z-10 lg:pl-0 overflow-y-auto hide-scrollbar">
           <motion.div 
             initial={{ opacity: 0, x: 30 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.8, type: "spring", bounce: 0.2, delay: 0.2 }}
-            className="w-full max-w-[440px] relative"
+            className="w-full max-w-[520px] relative mx-auto my-auto py-8 sm:py-12"
           >
             {/* The Glassmorphism Card */}
             <Card className="w-full bg-[#020617]/10 backdrop-blur-lg border border-white/10 shadow-[0_8px_32px_0_rgba(0,0,0,0.6)] overflow-hidden relative">
@@ -280,6 +290,65 @@ export default function AuthPage() {
 
               <CardContent className="relative z-10 pt-6">
                 <form onSubmit={handleSubmit} className="space-y-5">
+                  {/* Personal Info Grid (signup only) */}
+                  <AnimatePresence>
+                    {!forgotMode && mode === 'signup' && (
+                      <motion.div
+                        key="personal-info-fields"
+                        initial={{ opacity: 0, y: -8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -8 }}
+                        transition={{ duration: 0.15 }}
+                        className="grid grid-cols-1 sm:grid-cols-2 gap-4"
+                      >
+                        {/* Full Name */}
+                        <div className="space-y-2">
+                          <Label htmlFor="auth-fullname" className="text-slate-200 drop-shadow-sm font-medium">Full Name</Label>
+                          <Input
+                            id="auth-fullname"
+                            type="text"
+                            autoComplete="name"
+                            placeholder="Your full name"
+                            value={fullName}
+                            onChange={(e) => setFullName(e.target.value)}
+                            disabled={submitting}
+                            className={`bg-[#020617]/50 border-white/10 text-white placeholder:text-slate-400 focus-visible:ring-cyan-400 focus-visible:border-cyan-400 transition-all ${errors.fullName ? 'border-red-400 focus-visible:ring-red-400' : ''}`}
+                          />
+                          <AnimatePresence>
+                            {errors.fullName && (
+                              <motion.p initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="text-xs text-red-300 pt-1 overflow-hidden font-medium drop-shadow-sm">
+                                {errors.fullName}
+                              </motion.p>
+                            )}
+                          </AnimatePresence>
+                        </div>
+                        
+                        {/* Phone */}
+                        <div className="space-y-2">
+                          <Label htmlFor="auth-phone" className="text-slate-200 drop-shadow-sm font-medium">Phone Number</Label>
+                          <Input
+                            id="auth-phone"
+                            type="tel"
+                            autoComplete="tel"
+                            inputMode="tel"
+                            placeholder="Your phone number"
+                            value={phone}
+                            onChange={(e) => setPhone(e.target.value)}
+                            disabled={submitting}
+                            className={`bg-[#020617]/50 border-white/10 text-white placeholder:text-slate-400 focus-visible:ring-cyan-400 focus-visible:border-cyan-400 transition-all ${errors.phone ? 'border-red-400 focus-visible:ring-red-400' : ''}`}
+                          />
+                          <AnimatePresence>
+                            {errors.phone && (
+                              <motion.p initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="text-xs text-red-300 pt-1 overflow-hidden font-medium drop-shadow-sm">
+                                {errors.phone}
+                              </motion.p>
+                            )}
+                          </AnimatePresence>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
                   {/* Email */}
                   <div className="space-y-2">
                     <Label htmlFor="auth-email" className="text-slate-200 drop-shadow-sm font-medium">Email</Label>
@@ -287,9 +356,11 @@ export default function AuthPage() {
                       id="auth-email"
                       type="email"
                       autoComplete="email"
+                      spellCheck={false}
                       placeholder="you@example.com"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
+                      disabled={submitting}
                       className={`bg-[#020617]/50 border-white/10 text-white placeholder:text-slate-400 focus-visible:ring-cyan-400 focus-visible:border-cyan-400 transition-all ${errors.email ? 'border-red-400 focus-visible:ring-red-400' : ''}`}
                     />
                     <AnimatePresence>
@@ -301,77 +372,73 @@ export default function AuthPage() {
                     </AnimatePresence>
                   </div>
 
-                  {/* Password (hidden in forgot mode) */}
+                  {/* Password section */}
                   <AnimatePresence>
                     {!forgotMode && (
                       <motion.div
-                        key="password-field"
+                        key="password-section"
                         initial={{ opacity: 0, y: -8 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -8 }}
                         transition={{ duration: 0.15 }}
-                        className="space-y-2"
+                        className={`grid grid-cols-1 ${mode === 'signup' ? 'sm:grid-cols-2 gap-4' : 'gap-4'}`}
                       >
-                        <Label htmlFor="auth-password" className="text-slate-200 drop-shadow-sm font-medium">Password</Label>
-                        <div className="relative">
-                          <Input
-                            id="auth-password"
-                            type={showPassword ? 'text' : 'password'}
-                            autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
-                            placeholder={mode === 'signup' ? 'Min 8 characters' : 'Enter password'}
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            className={`bg-[#020617]/50 border-white/10 text-white placeholder:text-slate-400 focus-visible:ring-cyan-400 focus-visible:border-cyan-400 transition-all pr-10 ${errors.password ? 'border-red-400 focus-visible:ring-red-400' : ''}`}
-                          />
-                          <button
-                            type="button"
-                            aria-label={showPassword ? "Hide password" : "Show password"}
-                            onClick={() => setShowPassword(!showPassword)}
-                            className="absolute right-3 top-2.5 text-slate-400 hover:text-white transition-colors"
-                            tabIndex={-1}
-                          >
-                            {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                          </button>
+                        {/* Password */}
+                        <div className="space-y-2">
+                          <Label htmlFor="auth-password" className="text-slate-200 drop-shadow-sm font-medium">Password</Label>
+                          <div className="relative">
+                            <Input
+                              id="auth-password"
+                              type={showPassword ? 'text' : 'password'}
+                              autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
+                              placeholder={mode === 'signup' ? 'Min 8 characters' : 'Enter password'}
+                              value={password}
+                              onChange={(e) => setPassword(e.target.value)}
+                              disabled={submitting}
+                              className={`bg-[#020617]/50 border-white/10 text-white placeholder:text-slate-400 focus-visible:ring-cyan-400 focus-visible:border-cyan-400 transition-all pr-10 ${errors.password ? 'border-red-400 focus-visible:ring-red-400' : ''}`}
+                            />
+                            <button
+                              type="button"
+                              aria-label={showPassword ? "Hide password" : "Show password"}
+                              onClick={() => setShowPassword(!showPassword)}
+                              className="absolute right-3 top-2.5 text-slate-400 hover:text-white transition-colors"
+                              tabIndex={-1}
+                            >
+                              {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                            </button>
+                          </div>
+                          <AnimatePresence>
+                            {errors.password && (
+                              <motion.p initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="text-xs text-red-300 pt-1 overflow-hidden font-medium drop-shadow-sm">
+                                {errors.password}
+                              </motion.p>
+                            )}
+                          </AnimatePresence>
                         </div>
-                        <AnimatePresence>
-                          {errors.password && (
-                            <motion.p initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="text-xs text-red-300 pt-1 overflow-hidden font-medium drop-shadow-sm">
-                              {errors.password}
-                            </motion.p>
-                          )}
-                        </AnimatePresence>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
 
-                  {/* Confirm Password (signup only) */}
-                  <AnimatePresence>
-                    {!forgotMode && mode === 'signup' && (
-                      <motion.div
-                        key="confirm-password-field"
-                        initial={{ opacity: 0, y: -8 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -8 }}
-                        transition={{ duration: 0.15 }}
-                        className="space-y-2"
-                      >
-                        <Label htmlFor="auth-confirm-password" className="text-slate-200 drop-shadow-sm font-medium">Confirm password</Label>
-                        <Input
-                          id="auth-confirm-password"
-                          type="password"
-                          autoComplete="new-password"
-                          placeholder="Re-enter password"
-                          value={confirmPassword}
-                          onChange={(e) => setConfirmPassword(e.target.value)}
-                          className={`bg-[#020617]/50 border-white/10 text-white placeholder:text-slate-400 focus-visible:ring-cyan-400 focus-visible:border-cyan-400 transition-all ${errors.confirmPassword ? 'border-red-400 focus-visible:ring-red-400' : ''}`}
-                        />
-                        <AnimatePresence>
-                          {errors.confirmPassword && (
-                            <motion.p initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="text-xs text-red-300 pt-1 overflow-hidden font-medium drop-shadow-sm">
-                              {errors.confirmPassword}
-                            </motion.p>
-                          )}
-                        </AnimatePresence>
+                        {/* Confirm Password (signup only) */}
+                        {mode === 'signup' && (
+                          <div className="space-y-2">
+                            <Label htmlFor="auth-confirm-password" className="text-slate-200 drop-shadow-sm font-medium">Confirm password</Label>
+                            <Input
+                              id="auth-confirm-password"
+                              type="password"
+                              autoComplete="new-password"
+                              placeholder="Re-enter password"
+                              value={confirmPassword}
+                              onChange={(e) => setConfirmPassword(e.target.value)}
+                              disabled={submitting}
+                              className={`bg-[#020617]/50 border-white/10 text-white placeholder:text-slate-400 focus-visible:ring-cyan-400 focus-visible:border-cyan-400 transition-all ${errors.confirmPassword ? 'border-red-400 focus-visible:ring-red-400' : ''}`}
+                            />
+                            <AnimatePresence>
+                              {errors.confirmPassword && (
+                                <motion.p initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="text-xs text-red-300 pt-1 overflow-hidden font-medium drop-shadow-sm">
+                                  {errors.confirmPassword}
+                                </motion.p>
+                              )}
+                            </AnimatePresence>
+                          </div>
+                        )}
                       </motion.div>
                     )}
                   </AnimatePresence>

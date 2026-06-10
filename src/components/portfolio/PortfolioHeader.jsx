@@ -1,6 +1,6 @@
 // PortfolioHeader.jsx — profile header for portfolio page (own or read-only view)
 import React, { useState } from 'react';
-import { Pencil, MapPin, Check, X } from 'lucide-react';
+import { Pencil, MapPin, Check, X, Phone } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { getInitials, getAvatarColor } from '../../lib/avatarUtils';
 import { supabase } from '../../lib/supabase';
@@ -10,6 +10,7 @@ export default function PortfolioHeader({ profile, isOwn, onProfileUpdate }) {
   const [editing, setEditing] = useState(false);
   const [editName, setEditName] = useState(profile?.full_name || '');
   const [editHeadline, setEditHeadline] = useState(profile?.headline || '');
+  const [editPhone, setEditPhone] = useState(profile?.phone || '');
   const [saving, setSaving] = useState(false);
 
   const initials = getInitials(profile?.full_name);
@@ -20,11 +21,11 @@ export default function PortfolioHeader({ profile, isOwn, onProfileUpdate }) {
     try {
       const { error } = await supabase
         .from('profiles')
-        .update({ full_name: editName.trim(), headline: editHeadline.trim() })
+        .update({ full_name: editName.trim(), headline: editHeadline.trim(), phone: editPhone.trim() })
         .eq('id', profile.id);
 
       if (!error) {
-        onProfileUpdate?.({ ...profile, full_name: editName.trim(), headline: editHeadline.trim() });
+        onProfileUpdate?.({ ...profile, full_name: editName.trim(), headline: editHeadline.trim(), phone: editPhone.trim() });
         setEditing(false);
       }
     } catch (err) {
@@ -79,6 +80,16 @@ export default function PortfolioHeader({ profile, isOwn, onProfileUpdate }) {
           <p className="text-sm text-gray-500 mb-2">{profile?.headline}</p>
         )}
 
+        {/* Phone Edit */}
+        {editing && (
+          <input
+            className="text-sm text-gray-500 text-center border-b border-gray-300 focus:outline-none focus:border-brand mb-2 w-full max-w-xs"
+            value={editPhone}
+            onChange={(e) => setEditPhone(e.target.value)}
+            placeholder="Phone number"
+          />
+        )}
+
         {/* Edit save/cancel */}
         {editing && (
           <div className="flex items-center gap-2 mb-3">
@@ -94,6 +105,7 @@ export default function PortfolioHeader({ profile, isOwn, onProfileUpdate }) {
                 setEditing(false);
                 setEditName(profile?.full_name || '');
                 setEditHeadline(profile?.headline || '');
+                setEditPhone(profile?.phone || '');
               }}
               className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-medium text-gray-500 hover:bg-gray-50 transition-colors"
             >
@@ -102,8 +114,14 @@ export default function PortfolioHeader({ profile, isOwn, onProfileUpdate }) {
           </div>
         )}
 
-        {/* Location + work type */}
+        {/* Location + work type + phone */}
         <div className="flex items-center gap-2 flex-wrap justify-center mb-3">
+          {profile?.phone && !editing && (
+            <span className="inline-flex items-center gap-1 text-xs text-gray-500">
+              <Phone className="w-3 h-3" />
+              {profile.phone}
+            </span>
+          )}
           {profile?.location && (
             <span className="inline-flex items-center gap-1 text-xs text-gray-500">
               <MapPin className="w-3 h-3" />

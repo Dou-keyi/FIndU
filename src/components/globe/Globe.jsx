@@ -147,7 +147,7 @@ export default function Globe({ nodes = [], profile, role, onNodeClick, loading 
           const color = node.matchScore >= 0.8
             ? '#1D9E75'
             : node.matchScore >= 0.5
-              ? '#3B82F6'
+              ? '#FF6B00'
               : '#64748b';
 
           return (

@@ -206,19 +206,19 @@
 }
 
 .globe-orbit-node--score-mid .globe-orbit-node__circle {
-  border: 2.5px solid #3B82F6;
-  color: #93C5FD;
+  border: 2.5px solid #FF6B00;
+  color: #FFD1B3;
   box-shadow:
-    0 0 0 3px rgba(59, 130, 246, 0.12),
-    0 0 20px rgba(59, 130, 246, 0.2),
-    0 2px 12px rgba(0, 0, 0, 0.3);
+    0 0 0 3px rgba(255, 107, 0, 0.12),
+    0 0 20px rgba(255, 107, 0, 0.3),
+    0 2px 12px rgba(0, 0, 0, 0.4);
 }
 
 .globe-orbit-node--score-mid:hover .globe-orbit-node__circle {
   box-shadow:
-    0 0 0 3px rgba(59, 130, 246, 0.2),
-    0 0 32px rgba(59, 130, 246, 0.35),
-    0 4px 20px rgba(0, 0, 0, 0.3);
+    0 0 0 3px rgba(255, 107, 0, 0.25),
+    0 0 32px rgba(255, 107, 0, 0.5),
+    0 4px 20px rgba(0, 0, 0, 0.5);
 }
 
 .globe-orbit-node--score-low .globe-orbit-node__circle {
@@ -365,7 +365,7 @@
 }
 
 .globe-orbit-node--score-mid .globe-orbit-node__score {
-  background: #3B82F6;
+  background: #FF6B00;
 }
 
 .globe-orbit-node--score-low .globe-orbit-node__score {
