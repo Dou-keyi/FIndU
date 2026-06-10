@@ -19,7 +19,13 @@ export function subscribeToNewPosts(onNewPost) {
             *,
             author:profiles!author_id(id, full_name, headline, avatar_url, skills, role),
             company:companies!company_id(id, name, logo_url),
-            poll:polls(*, options:poll_options(*), votes:poll_votes(*))
+            poll:polls(*, options:poll_options(*), votes:poll_votes(*)),
+            job:jobs(*, company:companies!company_id(id, name, logo_url)),
+            quoted_post:posts!quoted_post_id(
+              *,
+              author:profiles!author_id(id, full_name, headline, avatar_url, skills, role),
+              company:companies!company_id(id, name, logo_url)
+            )
           `)
           .eq('id', payload.new.id)
           .single();

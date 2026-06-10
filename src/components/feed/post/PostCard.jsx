@@ -16,6 +16,7 @@ import PostDocumentCard from './PostDocumentCard';
 import PostLinkPreview from './PostLinkPreview';
 import PostPollDisplay from './PostPollDisplay';
 import PostActionBar from './PostActionBar';
+import FeedJobCard from '../FeedJobCard';
 import toast from 'react-hot-toast';
 
 // Lazy import for CommentThread to avoid large initial bundle
@@ -122,6 +123,31 @@ const PostCard = forwardRef(function PostCard({ post, index, isNested = false },
   // Hashtags section
   const hashtags = post.hashtags || [];
 
+  // Inline Editing
+  const [isEditing, setIsEditing] = useState(false);
+  const [editContent, setEditContent] = useState(post.content || '');
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleEditSave = async () => {
+    if (!editContent.trim() || editContent === post.content) {
+      setIsEditing(false);
+      return;
+    }
+    setIsSaving(true);
+    try {
+      const { error } = await supabase.from('posts').update({ content: editContent }).eq('id', post.id);
+      if (error) throw error;
+      useFeedStore.getState().updatePost(post.id, () => ({ content: editContent }));
+      toast.success('Post updated');
+      setIsEditing(false);
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to update post');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   return (
     <motion.article
       ref={ref}
@@ -165,7 +191,10 @@ const PostCard = forwardRef(function PostCard({ post, index, isNested = false },
         isOwner={isOwner}
         isFollowing={isFollowing}
         onFollow={handleFollow}
-        onEdit={() => {}}
+        onEdit={() => {
+          setIsEditing(true);
+          setEditContent(post.content);
+        }}
         onDelete={handleDelete}
         onViewInsights={() => setInsightsPostId(post.id)}
         onCopyLink={handleCopyLink}
@@ -177,7 +206,38 @@ const PostCard = forwardRef(function PostCard({ post, index, isNested = false },
       />
 
       {/* Content body */}
-      <PostContent content={post.content} />
+      {isEditing ? (
+        <div className="mb-3">
+          <textarea
+            className="w-full border border-violet-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 mb-2 resize-none"
+            rows={4}
+            value={editContent}
+            onChange={(e) => setEditContent(e.target.value)}
+            disabled={isSaving}
+          />
+          <div className="flex justify-end gap-2">
+            <button
+              onClick={() => {
+                setIsEditing(false);
+                setEditContent(post.content);
+              }}
+              disabled={isSaving}
+              className="px-3 py-1.5 rounded-lg text-xs font-semibold text-gray-500 hover:bg-gray-100 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleEditSave}
+              disabled={isSaving}
+              className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-brand text-white hover:bg-brand-dark transition-colors flex items-center gap-1"
+            >
+              {isSaving ? 'Saving...' : 'Save'}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <PostContent content={post.content} />
+      )}
 
       {/* Hashtag pills */}
       {hashtags.length > 0 && (
@@ -247,6 +307,25 @@ const PostCard = forwardRef(function PostCard({ post, index, isNested = false },
       {isQuoteRepost && post.quoted_post && (
         <div className="border border-gray-100 rounded-xl mt-1 mb-3 overflow-hidden">
           <PostCard post={post.quoted_post} isNested />
+        </div>
+      )}
+
+      {/* Job Card */}
+      {postType === POST_TYPES.JOB && post.job && (
+        <div className="mb-3">
+          <FeedJobCard 
+            job={post.job} 
+            onViewDetail={(j) => navigate(`/jobs/${j.id}`)}
+            onApply={async (j) => {
+              const { applyToJob } = await import('../../../lib/trackingData');
+              const { error } = await applyToJob(user.id, j.id, 'Applied via Feed');
+              if (error) {
+                toast.error('Failed to apply. Please try again.');
+                throw error;
+              }
+              toast.success(`Successfully applied for ${j.title}!`);
+            }}
+          />
         </div>
       )}
 

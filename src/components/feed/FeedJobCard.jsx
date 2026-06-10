@@ -1,10 +1,38 @@
 // FeedJobCard.jsx — full-width job card for Jobs tab and Company page open roles
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { MapPin, Briefcase, Building2, Loader2 } from 'lucide-react';
 import { getInitials, getAvatarColor } from '../../lib/avatarUtils';
+import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../hooks/useAuth';
 
 export default function FeedJobCard({ job, onViewDetail, onApply }) {
+  const { user } = useAuth();
   const [applying, setApplying] = useState(false);
+  const [isApplied, setIsApplied] = useState(job.has_applied || false);
+  const [checking, setChecking] = useState(!job.has_applied);
+
+  useEffect(() => {
+    if (!user || job.has_applied) {
+      setChecking(false);
+      return;
+    }
+    const checkStatus = async () => {
+      try {
+        const { data } = await supabase
+          .from('applications')
+          .select('id')
+          .eq('job_id', job.id)
+          .eq('candidate_id', user.id)
+          .maybeSingle();
+        if (data) setIsApplied(true);
+      } catch (err) {
+        console.error('Failed to check application status', err);
+      } finally {
+        setChecking(false);
+      }
+    };
+    checkStatus();
+  }, [user, job.id, job.has_applied]);
 
   const companyName = job.company?.name || 'Company';
   const logoColor = getAvatarColor(companyName);
@@ -24,6 +52,7 @@ export default function FeedJobCard({ job, onViewDetail, onApply }) {
     setApplying(true);
     try {
       await onApply?.(job);
+      setIsApplied(true);
     } finally {
       setApplying(false);
     }
@@ -112,15 +141,15 @@ export default function FeedJobCard({ job, onViewDetail, onApply }) {
             </button>
             <button
               onClick={handleApply}
-              disabled={applying || job.has_applied}
+              disabled={applying || isApplied || checking}
               className={`flex-[2] py-2 rounded-xl text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand flex items-center justify-center gap-2 ${
-                job.has_applied
+                isApplied || checking
                   ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
                   : 'bg-brand text-white hover:bg-brand-dark shadow-sm'
               }`}
             >
-              {applying && <Loader2 className="w-4 h-4 animate-spin" />}
-              {job.has_applied ? 'Applied' : applying ? 'Applying…' : 'Apply'}
+              {(applying || checking) && <Loader2 className="w-4 h-4 animate-spin" />}
+              {checking ? 'Checking…' : isApplied ? 'Applied' : applying ? 'Applying…' : 'Apply'}
             </button>
           </div>
         </div>

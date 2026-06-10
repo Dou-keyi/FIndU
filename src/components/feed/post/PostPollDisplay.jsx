@@ -58,11 +58,53 @@ export default function PostPollDisplay({ poll, options = [], votes = [], userVo
     }
   };
 
+  const [translatedData, setTranslatedData] = useState(null);
+  const [showTranslation, setShowTranslation] = useState(false);
+  const [isTranslating, setIsTranslating] = useState(false);
+
+  const handleTranslate = async (e) => {
+    e.stopPropagation();
+    if (showTranslation) {
+      setShowTranslation(false);
+      return;
+    }
+    if (translatedData) {
+      setShowTranslation(true);
+      return;
+    }
+    setIsTranslating(true);
+    try {
+      // Import translateText dynamically or at top of file
+      const { translateText } = await import('../../../lib/translation');
+      const targetLang = navigator.language.split('-')[0] || 'en';
+      const qRes = poll.question ? await translateText(poll.question, targetLang) : null;
+      
+      const optPromises = options.map(async (opt) => {
+        const oRes = await translateText(opt.text, targetLang);
+        return { id: opt.id, text: oRes.translated };
+      });
+      const translatedOptions = await Promise.all(optPromises);
+
+      setTranslatedData({
+        question: qRes ? qRes.translated : null,
+        options: translatedOptions,
+        detectedLang: qRes ? qRes.detectedLang : 'unknown'
+      });
+      setShowTranslation(true);
+    } catch (err) {
+      console.error('Failed to translate poll:', err);
+    } finally {
+      setIsTranslating(false);
+    }
+  };
+
   return (
     <div className="mb-3 space-y-2">
       {/* Question */}
       {poll?.question && (
-        <p className="text-sm font-semibold text-gray-800 mb-2">{poll.question}</p>
+        <p className="text-sm font-semibold text-gray-800 mb-2">
+          {showTranslation && translatedData?.question ? translatedData.question : poll.question}
+        </p>
       )}
 
       {/* Options */}
@@ -70,6 +112,10 @@ export default function PostPollDisplay({ poll, options = [], votes = [], userVo
         const count = optionVoteCounts[option.id] || 0;
         const pct = totalVotes > 0 ? Math.round((count / totalVotes) * 100) : 0;
         const isSelected = selectedOption === option.id;
+
+        const displayText = showTranslation && translatedData
+          ? translatedData.options.find((o) => o.id === option.id)?.text || option.text
+          : option.text;
 
         return (
           <button
@@ -97,7 +143,7 @@ export default function PostPollDisplay({ poll, options = [], votes = [], userVo
             <div className="relative flex items-center justify-between">
               <span className={`text-sm font-medium ${isSelected ? 'text-violet-800' : 'text-gray-700'}`}>
                 {isSelected && <CheckCircle2 className="w-4 h-4 inline mr-1.5 text-violet-600" />}
-                {option.text}
+                {displayText}
               </span>
               {showResults && (
                 <span className={`text-sm font-bold ${isSelected ? 'text-violet-700' : 'text-gray-500'}`}>
@@ -110,14 +156,31 @@ export default function PostPollDisplay({ poll, options = [], votes = [], userVo
       })}
 
       {/* Footer */}
-      <div className="flex items-center gap-3 text-xs text-gray-400 pt-1">
-        <span>{totalVotes} vote{totalVotes !== 1 ? 's' : ''}</span>
-        {timeRemaining && (
-          <span className="flex items-center gap-1">
-            <Clock className="w-3 h-3" />
-            {timeRemaining}
-          </span>
-        )}
+      <div className="flex items-center justify-between pt-1">
+        <div className="flex items-center gap-3 text-xs text-gray-400">
+          <span>{totalVotes} vote{totalVotes !== 1 ? 's' : ''}</span>
+          {timeRemaining && (
+            <span className="flex items-center gap-1">
+              <Clock className="w-3 h-3" />
+              {timeRemaining}
+            </span>
+          )}
+        </div>
+        
+        {/* Translate Button */}
+        <button
+          onClick={handleTranslate}
+          disabled={isTranslating}
+          className="text-[11px] font-semibold text-gray-400 hover:text-gray-600 transition-colors flex items-center gap-1"
+        >
+          {isTranslating ? (
+            'Translating...'
+          ) : showTranslation ? (
+            `See original (${translatedData.detectedLang.toUpperCase()})`
+          ) : (
+            'Translate poll'
+          )}
+        </button>
       </div>
     </div>
   );

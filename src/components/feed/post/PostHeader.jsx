@@ -114,14 +114,27 @@ export default function PostHeader({
           )}
 
           {/* Follow button — only for non-owners */}
-          {!isOwner && !isFollowing && !isCompanyPost && (
+          {!isOwner && !isCompanyPost && (
             <button
-              onClick={handleFollow}
-              disabled={followLoading}
-              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold text-violet-600 hover:bg-violet-50 transition-colors border border-violet-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500"
+              onClick={!isFollowing ? handleFollow : undefined}
+              disabled={followLoading || isFollowing}
+              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold transition-colors border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 ${
+                isFollowing 
+                  ? 'bg-gray-50 text-gray-500 border-gray-200 cursor-default' 
+                  : 'text-violet-600 hover:bg-violet-50 border-violet-200 cursor-pointer'
+              }`}
             >
-              <UserPlus className="w-3 h-3" />
-              Follow
+              {isFollowing ? (
+                <>
+                  <UserCheck className="w-3 h-3" />
+                  Followed
+                </>
+              ) : (
+                <>
+                  <UserPlus className="w-3 h-3" />
+                  Follow
+                </>
+              )}
             </button>
           )}
         </div>

@@ -23,6 +23,57 @@ export default function CommentItem({ comment, postAuthorId, onReplyCreated, chi
   const isPostAuthor = comment.user_id === postAuthorId;
   const isOwner = user?.id === comment.user_id;
 
+  const [translatedData, setTranslatedData] = useState(null);
+  const [showTranslation, setShowTranslation] = useState(false);
+  const [isTranslating, setIsTranslating] = useState(false);
+  
+  const [isFollowing, setIsFollowing] = useState(false);
+  const [followLoading, setFollowLoading] = useState(false);
+
+  const handleFollow = async () => {
+    if (!user || !author?.id || followLoading) return;
+    setFollowLoading(true);
+    try {
+      const { error } = await supabase.from('user_follows').insert({
+        follower_id: user.id,
+        following_id: author.id,
+      });
+      if (error && error.code !== '23505') throw error;
+      setIsFollowing(true);
+    } catch (err) {
+      console.error('Follow failed:', err);
+    } finally {
+      setFollowLoading(false);
+    }
+  };
+
+  const handleTranslate = async (e) => {
+    e.stopPropagation();
+    if (showTranslation) {
+      setShowTranslation(false);
+      return;
+    }
+    if (translatedData) {
+      setShowTranslation(true);
+      return;
+    }
+    setIsTranslating(true);
+    try {
+      const { translateText } = await import('../../../lib/translation');
+      const targetLang = navigator.language.split('-')[0] || 'en';
+      const result = await translateText(comment.body, targetLang);
+      setTranslatedData({
+        translated: result.translated,
+        detectedLang: result.detectedLang
+      });
+      setShowTranslation(true);
+    } catch (err) {
+      console.error('Failed to translate comment:', err);
+    } finally {
+      setIsTranslating(false);
+    }
+  };
+
   const handleReact = useCallback(async (type) => {
     if (!user) return;
     const prev = userReaction;
@@ -109,9 +160,27 @@ export default function CommentItem({ comment, postAuthorId, onReplyCreated, chi
               <span className="text-[10px] text-gray-400">
                 {formatRelativeTime(comment.created_at)}
               </span>
+              
+              {/* Inline Follow Button */}
+              {!isOwner && (
+                <>
+                  <span className="text-gray-300 text-[10px]">•</span>
+                  <button
+                    onClick={isFollowing ? undefined : handleFollow}
+                    disabled={followLoading || isFollowing}
+                    className={`text-[10px] font-bold transition-colors ${
+                      isFollowing ? 'text-gray-400 cursor-default' : 'text-violet-600 hover:text-violet-800'
+                    }`}
+                  >
+                    {isFollowing ? 'Followed' : 'Follow'}
+                  </button>
+                </>
+              )}
             </div>
 
-            <p className="text-sm text-gray-700 whitespace-pre-wrap">{comment.body}</p>
+            <p className="text-sm text-gray-700 whitespace-pre-wrap">
+              {showTranslation && translatedData ? translatedData.translated : comment.body}
+            </p>
 
             {/* Attached image */}
             {comment.image_url && (
@@ -149,6 +218,17 @@ export default function CommentItem({ comment, postAuthorId, onReplyCreated, chi
               >
                 <MessageCircle className="w-3 h-3" />
                 Reply
+              </button>
+            )}
+
+            {/* Translate button */}
+            {comment.body && comment.body.length > 5 && (
+              <button
+                onClick={handleTranslate}
+                disabled={isTranslating}
+                className="text-[11px] font-semibold text-gray-400 hover:text-gray-600 transition-colors flex items-center gap-0.5"
+              >
+                {isTranslating ? 'Translating...' : showTranslation ? `See original (${translatedData.detectedLang.toUpperCase()})` : 'Translate'}
               </button>
             )}
 
