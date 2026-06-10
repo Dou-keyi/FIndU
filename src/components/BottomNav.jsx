@@ -6,7 +6,7 @@ import { useAuth } from '../hooks/useAuth';
 import { getUnreadCounts } from '../lib/messagingData';
 
 const NAV_ITEMS = [
-  { path: '/globe', icon: Globe2, label: 'Globe' },
+  { path: '/globe', icon: Globe2, label: 'Jobs' },
   { path: '/feed', icon: Newspaper, label: 'Feed' },
   { path: '/portfolio', icon: FileText, label: 'Portfolio' },
   { path: '/messaging', icon: MessageSquare, label: 'Messages' },

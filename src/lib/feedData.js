@@ -176,3 +176,52 @@ export async function getFollowerCount(companyId) {
     return 0;
   }
 }
+
+/**
+ * Search open jobs with advanced filters
+ */
+export async function searchJobs(userProfile, filters = {}) {
+  try {
+    let query = supabase
+      .from('jobs')
+      .select('*, company:companies(id, name, logo_url)')
+      .eq('status', 'open');
+
+    if (filters.title) {
+      query = query.ilike('title', `%${filters.title}%`);
+    }
+    if (filters.location) {
+      query = query.ilike('location', `%${filters.location}%`);
+    }
+    if (filters.minSalary) {
+      query = query.gte('salary_min', Number(filters.minSalary));
+    }
+    if (filters.workType && filters.workType !== 'all') {
+      query = query.eq('work_type', filters.workType);
+    }
+
+    const { data, error } = await query.order('created_at', { ascending: false }).limit(50);
+
+    if (error) throw error;
+
+    const jobs = (data || []).map((job) => ({
+      ...job,
+      matchScore: userProfile
+        ? computeMatchScore(
+            userProfile.skills,
+            job.skills_required,
+            userProfile.work_type,
+            job.work_type
+          )
+        : 0,
+    }));
+
+    // Sort by match score descending
+    jobs.sort((a, b) => b.matchScore - a.matchScore);
+    return jobs;
+  } catch (err) {
+    console.error('Failed to search jobs:', err);
+    return [];
+  }
+}
+

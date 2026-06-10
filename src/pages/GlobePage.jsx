@@ -11,6 +11,8 @@ import JobDetailSheet from '../components/swipe/JobDetailSheet';
 import CandidatePortfolioSheet from '../components/swipe/CandidatePortfolioSheet';
 import ApplyConfirmSheet from '../components/swipe/ApplyConfirmSheet';
 import MutualMatchModal from '../components/swipe/MutualMatchModal';
+import JobsListSection from '../components/globe/JobsListSection';
+import { supabase } from '../lib/supabase';
 import { useAuthStore } from '../store/authStore';
 
 export default function GlobePage() {
@@ -110,6 +112,20 @@ export default function GlobePage() {
     setMutualMatchNode(node);
   }, []);
 
+  const handleJobApply = async (job) => {
+    if (!user) return;
+    try {
+      const { error } = await supabase
+        .from('applications')
+        .insert({ job_id: job.id, candidate_id: user.id });
+
+      if (error && error.code !== '23505') throw error;
+      setApplyConfirmNode({ ...job, title: job.title, company_name: job.company?.name });
+    } catch (err) {
+      console.error('Failed to apply:', err);
+    }
+  };
+
   // Get user initials for avatar
   const userInitials = profile?.full_name
     ? profile.full_name
@@ -121,9 +137,13 @@ export default function GlobePage() {
     : '?';
 
   return (
-    <div className="relative min-h-screen min-h-[100dvh] flex flex-col overflow-hidden">
+    <div className="relative min-h-screen min-h-[100dvh] flex flex-col overflow-y-auto overflow-x-hidden">
       {/* Deep-space background */}
       <UniverseBackground showConstellation={false} />
+      
+      {/* Extra ambient light for the globe section sky */}
+      <div className="absolute top-[20%] left-1/2 -translate-x-1/2 w-[80vw] h-[80vw] max-w-[800px] max-h-[800px] bg-blue-500/15 rounded-full blur-[120px] pointer-events-none z-0 mix-blend-screen" />
+      <div className="absolute top-[40%] left-1/2 -translate-x-1/2 w-[60vw] h-[60vw] max-w-[600px] max-h-[600px] bg-cyan-400/10 rounded-full blur-[100px] pointer-events-none z-0 mix-blend-screen" />
 
 
       {/* Main content area */}
@@ -139,7 +159,7 @@ export default function GlobePage() {
               transition={{ duration: 0.8, delay: 0.4, ease: [0.22, 1, 0.36, 1] }}
             >
               {/* Globe */}
-              <div className="flex-1 flex items-center justify-center">
+              <div className="min-h-[100dvh] flex flex-col items-center justify-center pt-16 lg:pt-0">
                 <Globe
                   nodes={nodes}
                   profile={profile}
@@ -171,6 +191,13 @@ export default function GlobePage() {
                   </p>
                 </div>
               )}
+
+              {/* Jobs List Section */}
+              <JobsListSection 
+                profile={profile} 
+                onJobClick={handleShowJobDetail} 
+                onJobApply={handleJobApply} 
+              />
             </motion.div>
           ) : (
             <motion.div

@@ -19,7 +19,6 @@ const TABS = [
   { key: 'all', label: 'All' },
   { key: 'candidates', label: 'Candidates' },
   { key: 'companies', label: 'Companies' },
-  { key: 'jobs', label: 'Jobs' },
 ];
 
 export default function FeedPage() {
@@ -267,7 +266,7 @@ export default function FeedPage() {
                         </div>
                         <div className="flex gap-3 overflow-x-auto hide-scrollbar pb-2 -mx-1 px-1">
                           {topJobs.map((job) => (
-                            <JobStripCard key={job.id} job={job} onClick={() => setActiveTab('jobs')} />
+                            <JobStripCard key={job.id} job={job} onClick={() => openJobDetail(job)} />
                           ))}
                         </div>
                       </div>
@@ -299,26 +298,6 @@ export default function FeedPage() {
                     ) : (
                       displayedPosts.map((post) => (
                         <PostCard key={post.id} post={post} viewerRole={role} />
-                      ))
-                    )}
-                  </motion.div>
-                )}
-
-                {/* JOBS TAB */}
-                {activeTab === 'jobs' && (
-                  <motion.div
-                    key="jobs"
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -10 }}
-                    transition={{ duration: 0.2 }}
-                    className="space-y-4"
-                  >
-                    {jobs.length === 0 ? (
-                      <p className="text-center text-sm text-gray-400 py-12">No open jobs right now.</p>
-                    ) : (
-                      jobs.map((job) => (
-                        <FeedJobCard key={job.id} job={job} onViewDetail={openJobDetail} onApply={handleJobApply} />
                       ))
                     )}
                   </motion.div>
@@ -360,7 +339,7 @@ export default function FeedPage() {
                 ))}
               </div>
               <button 
-                onClick={() => setActiveTab('jobs')}
+                onClick={() => navigate('/globe')}
                 className="w-full mt-4 py-2.5 text-xs font-semibold text-brand bg-brand/5 hover:bg-brand/10 rounded-xl transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
               >
                 View all jobs →

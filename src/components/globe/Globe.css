@@ -301,7 +301,6 @@
   left: 50%;
   top: 50%;
   border-radius: 50%;
-  border: 1px dashed rgba(147, 197, 253, 0.08);
   pointer-events: none;
 }
 
@@ -310,6 +309,9 @@
   height: 280px;
   margin-left: -140px;
   margin-top: -140px;
+  border: 1.5px solid rgba(96, 165, 250, 0.2);
+  border-top-color: rgba(147, 197, 253, 0.6);
+  box-shadow: 0 0 40px rgba(59, 130, 246, 0.15);
 }
 
 .globe-ring-trace--2 {
@@ -317,6 +319,9 @@
   height: 440px;
   margin-left: -220px;
   margin-top: -220px;
+  border: 1.5px solid rgba(34, 211, 238, 0.1);
+  border-bottom-color: rgba(103, 232, 249, 0.5);
+  box-shadow: 0 0 30px rgba(34, 211, 238, 0.1);
 }
 
 /* ========================================
