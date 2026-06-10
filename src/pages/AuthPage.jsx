@@ -24,6 +24,7 @@ export default function AuthPage() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [role, setRole] = useState(''); // 'candidate' | 'employer'
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState({});
   const [forgotMode, setForgotMode] = useState(false);
@@ -420,16 +421,27 @@ export default function AuthPage() {
                         {mode === 'signup' && (
                           <div className="space-y-2">
                             <Label htmlFor="auth-confirm-password" className="text-slate-200 drop-shadow-sm font-medium">Confirm password</Label>
-                            <Input
-                              id="auth-confirm-password"
-                              type="password"
-                              autoComplete="new-password"
-                              placeholder="Re-enter password"
-                              value={confirmPassword}
-                              onChange={(e) => setConfirmPassword(e.target.value)}
-                              disabled={submitting}
-                              className={`bg-[#020617]/50 border-white/10 text-white placeholder:text-slate-400 focus-visible:ring-cyan-400 focus-visible:border-cyan-400 transition-all ${errors.confirmPassword ? 'border-red-400 focus-visible:ring-red-400' : ''}`}
-                            />
+                            <div className="relative">
+                              <Input
+                                id="auth-confirm-password"
+                                type={showConfirmPassword ? 'text' : 'password'}
+                                autoComplete="new-password"
+                                placeholder="Re-enter password"
+                                value={confirmPassword}
+                                onChange={(e) => setConfirmPassword(e.target.value)}
+                                disabled={submitting}
+                                className={`bg-[#020617]/50 border-white/10 text-white placeholder:text-slate-400 focus-visible:ring-cyan-400 focus-visible:border-cyan-400 transition-all pr-10 ${errors.confirmPassword ? 'border-red-400 focus-visible:ring-red-400' : ''}`}
+                              />
+                              <button
+                                type="button"
+                                aria-label={showConfirmPassword ? "Hide password" : "Show password"}
+                                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                className="absolute right-3 top-2.5 text-slate-400 hover:text-white transition-colors"
+                                tabIndex={-1}
+                              >
+                                {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                              </button>
+                            </div>
                             <AnimatePresence>
                               {errors.confirmPassword && (
                                 <motion.p initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="text-xs text-red-300 pt-1 overflow-hidden font-medium drop-shadow-sm">
