@@ -1,7 +1,7 @@
-// CandidateWizard — 3-step onboarding wizard for candidates (role/work type → skills → location)
+// CandidateWizard — 4-step onboarding wizard for candidates (resume → role/work type → skills → location)
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Loader2, ArrowLeft, MapPin, Briefcase, Sparkles, CheckCircle } from 'lucide-react';
+import { Loader2, ArrowLeft, MapPin, Briefcase, Sparkles, CheckCircle, FileText } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
 import { useAuthStore } from '../../store/authStore';
@@ -12,9 +12,10 @@ import { Card, CardContent } from '../ui/card';
 import { toast } from '../ui/use-toast';
 import StepIndicator from './StepIndicator';
 import SkillSelector from './SkillSelector';
+import ResumeUploadStep from './ResumeUploadStep';
 
 const WORK_TYPES = ['Remote', 'Hybrid', 'On-site'];
-const STEP_LABELS = ['Role & Work', 'Skills', 'Location'];
+const STEP_LABELS = ['Resume', 'Role & Work', 'Skills', 'Location'];
 
 export default function CandidateWizard() {
   const navigate = useNavigate();
@@ -23,29 +24,34 @@ export default function CandidateWizard() {
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState({});
 
-  // Step 1 data
+  // Step 1 data — resume
+  const [resumeData, setResumeData] = useState(null);   // parsed resume from AI
+  const [selectedTemplate, setSelectedTemplate] = useState(null); // template id if no resume
+  const [resumePath, setResumePath] = useState(null);    // 'upload' | 'template' | null
+
+  // Step 2 data
   const [headline, setHeadline] = useState('');
   const [workType, setWorkType] = useState([]);
 
-  // Step 2 data
+  // Step 3 data
   const [skills, setSkills] = useState([]);
 
-  // Step 3 data
+  // Step 4 data
   const [location, setLocation] = useState('');
 
   function validateStep() {
     const newErrors = {};
 
-    if (step === 1) {
+    if (step === 2) {
       if (!headline.trim()) newErrors.headline = 'Job title or target role is required';
       if (workType.length === 0) newErrors.workType = 'Select at least one work type';
     }
 
-    if (step === 2) {
+    if (step === 3) {
       if (skills.length < 2) newErrors.skills = 'Select at least 2 skills';
     }
 
-    if (step === 3) {
+    if (step === 4) {
       if (!location.trim()) newErrors.location = 'Location is required';
     }
 
@@ -70,6 +76,33 @@ export default function CandidateWizard() {
     );
   }
 
+  /* ── Resume upload callback — pre-fill subsequent steps ── */
+  function handleResumeData(parsed) {
+    setResumeData(parsed);
+    setResumePath('upload');
+
+    // Pre-fill headline from parsed profile
+    if (parsed?.profile?.headline && !headline) {
+      setHeadline(parsed.profile.headline);
+    }
+
+    // Pre-fill skills
+    if (parsed?.skills?.length > 0 && skills.length === 0) {
+      setSkills(parsed.skills);
+    }
+
+    // Pre-fill location
+    if (parsed?.profile?.location && !location) {
+      setLocation(parsed.profile.location);
+    }
+  }
+
+  /* ── Template selection callback ── */
+  function handleTemplateSelect(templateId) {
+    setSelectedTemplate(templateId);
+    setResumePath('template');
+  }
+
   async function handleFinish() {
     if (!validateStep()) return;
 
@@ -77,46 +110,88 @@ export default function CandidateWizard() {
     try {
       // UPSERT profile
       const workTypeValues = workType.map((w) => w.toLowerCase());
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .update({
-          headline,
-          work_type: workTypeValues,
-          skills,
-          location,
-          onboarding_complete: true,
-        })
-        .eq('id', user.id);
-
-      if (profileError) throw profileError;
-
-      // INSERT portfolio item
-      const { error: portfolioError } = await supabase
-        .from('portfolio_items')
-        .insert({
-          candidate_id: user.id,
-          item_type: 'headline',
-          title: headline,
-          tags: skills,
-          source: 'onboarding',
-        });
-
-      if (portfolioError) {
-        console.warn('Portfolio insert failed (table may not exist yet):', portfolioError.message);
-      }
-
-      // Update local profile state
-      useAuthStore.getState().setProfile({
-        ...useAuthStore.getState().profile,
+      const profileUpdates = {
         headline,
         work_type: workTypeValues,
         skills,
         location,
         onboarding_complete: true,
+      };
+
+      // If resume was uploaded, also update profile fields from parsed data
+      if (resumePath === 'upload' && resumeData?.profile) {
+        if (resumeData.profile.full_name) profileUpdates.full_name = resumeData.profile.full_name;
+        if (resumeData.profile.phone) profileUpdates.phone = resumeData.profile.phone;
+      }
+
+      // Store template preference if chosen
+      if (resumePath === 'template' && selectedTemplate) {
+        profileUpdates.resume_template = selectedTemplate;
+      }
+
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update(profileUpdates)
+        .eq('id', user.id);
+
+      if (profileError) throw profileError;
+
+      // If resume was uploaded, bulk-insert portfolio items
+      if (resumePath === 'upload' && resumeData) {
+        const itemsToInsert = [];
+        for (const [type, items] of Object.entries(resumeData.sections || {})) {
+          for (const item of items || []) {
+            if (!item.title) continue;
+            itemsToInsert.push({
+              candidate_id: user.id,
+              item_type: type,
+              title: item.title,
+              description: item.description || null,
+              tags: item.tags || [],
+              source: 'import',
+            });
+          }
+        }
+
+        if (itemsToInsert.length > 0) {
+          const { error: itemsError } = await supabase
+            .from('portfolio_items')
+            .insert(itemsToInsert);
+          if (itemsError) {
+            console.warn('Portfolio items insert failed:', itemsError.message);
+          }
+        }
+      } else {
+        // Insert headline as portfolio item (original behaviour for non-upload path)
+        const { error: portfolioError } = await supabase
+          .from('portfolio_items')
+          .insert({
+            candidate_id: user.id,
+            item_type: 'headline',
+            title: headline,
+            tags: skills,
+            source: 'onboarding',
+          });
+
+        if (portfolioError) {
+          console.warn('Portfolio insert failed (table may not exist yet):', portfolioError.message);
+        }
+      }
+
+      // Update local profile state
+      useAuthStore.getState().setProfile({
+        ...useAuthStore.getState().profile,
+        ...profileUpdates,
       });
 
       toast({ title: 'Profile complete! 🎉', description: 'Welcome to Career OS.', variant: 'success' });
-      navigate('/globe', { replace: true });
+
+      // If template path (no resume), redirect to portfolio for manual entry
+      if (resumePath === 'template') {
+        navigate('/portfolio', { replace: true });
+      } else {
+        navigate('/globe', { replace: true });
+      }
     } catch (err) {
       console.error('Onboarding error:', err);
       toast({
@@ -131,10 +206,31 @@ export default function CandidateWizard() {
 
   return (
     <div className="w-full max-w-lg mx-auto">
-      <StepIndicator currentStep={step} totalSteps={3} stepLabels={STEP_LABELS} />
+      <StepIndicator currentStep={step} totalSteps={4} stepLabels={STEP_LABELS} />
 
-      {/* Step 1 — Role & Work Type */}
+      {/* Step 1 — Resume Upload */}
       {step === 1 && (
+        <Card>
+          <CardContent className="pt-6 space-y-4">
+            <div className="text-center mb-2">
+              <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-brand-100">
+                <FileText className="h-5 w-5 text-brand" />
+              </div>
+              <h2 className="text-lg font-semibold">Your resume</h2>
+              <p className="text-sm text-muted-foreground">Upload your resume to auto-fill your portfolio</p>
+            </div>
+
+            <ResumeUploadStep
+              onResumeData={handleResumeData}
+              onTemplateSelect={handleTemplateSelect}
+              onContinue={handleNext}
+            />
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Step 2 — Role & Work Type */}
+      {step === 2 && (
         <Card>
           <CardContent className="pt-6 space-y-6">
             <div className="text-center mb-2">
@@ -155,6 +251,11 @@ export default function CandidateWizard() {
                 className={errors.headline ? 'border-red-500' : ''}
               />
               {errors.headline && <p className="text-xs text-red-500">{errors.headline}</p>}
+              {resumePath === 'upload' && headline && (
+                <p className="text-[11px] text-emerald-500 flex items-center gap-1">
+                  <CheckCircle className="w-3 h-3" /> Pre-filled from your resume
+                </p>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -176,15 +277,21 @@ export default function CandidateWizard() {
               {errors.workType && <p className="text-xs text-red-500">{errors.workType}</p>}
             </div>
 
-            <Button onClick={handleNext} className="w-full">
-              Continue
-            </Button>
+            <div className="flex gap-3">
+              <Button variant="outline" onClick={handleBack} className="flex-1">
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Back
+              </Button>
+              <Button onClick={handleNext} className="flex-1">
+                Continue
+              </Button>
+            </div>
           </CardContent>
         </Card>
       )}
 
-      {/* Step 2 — Skills */}
-      {step === 2 && (
+      {/* Step 3 — Skills */}
+      {step === 3 && (
         <Card>
           <CardContent className="pt-6 space-y-6">
             <div className="text-center mb-2">
@@ -202,6 +309,12 @@ export default function CandidateWizard() {
               error={errors.skills}
             />
 
+            {resumePath === 'upload' && skills.length > 0 && (
+              <p className="text-[11px] text-emerald-500 flex items-center gap-1">
+                <CheckCircle className="w-3 h-3" /> Skills pre-filled from your resume — add or remove as needed
+              </p>
+            )}
+
             <div className="flex gap-3">
               <Button variant="outline" onClick={handleBack} className="flex-1">
                 <ArrowLeft className="mr-2 h-4 w-4" />
@@ -215,8 +328,8 @@ export default function CandidateWizard() {
         </Card>
       )}
 
-      {/* Step 3 — Location & Summary */}
-      {step === 3 && (
+      {/* Step 4 — Location & Summary */}
+      {step === 4 && (
         <Card>
           <CardContent className="pt-6 space-y-6">
             <div className="text-center mb-2">
@@ -237,6 +350,11 @@ export default function CandidateWizard() {
                 className={errors.location ? 'border-red-500' : ''}
               />
               {errors.location && <p className="text-xs text-red-500">{errors.location}</p>}
+              {resumePath === 'upload' && location && (
+                <p className="text-[11px] text-emerald-500 flex items-center gap-1">
+                  <CheckCircle className="w-3 h-3" /> Pre-filled from your resume
+                </p>
+              )}
             </div>
 
             {/* Summary card */}
@@ -246,6 +364,18 @@ export default function CandidateWizard() {
                 Profile summary
               </h3>
               <div className="space-y-2 text-sm">
+                {resumePath === 'upload' && (
+                  <div>
+                    <span className="text-muted-foreground">Resume:</span>{' '}
+                    <span className="font-medium text-emerald-600">✓ Uploaded & imported</span>
+                  </div>
+                )}
+                {resumePath === 'template' && (
+                  <div>
+                    <span className="text-muted-foreground">Template:</span>{' '}
+                    <span className="font-medium capitalize">{selectedTemplate}</span>
+                  </div>
+                )}
                 <div>
                   <span className="text-muted-foreground">Role:</span>{' '}
                   <span className="font-medium">{headline}</span>

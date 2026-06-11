@@ -137,3 +137,272 @@
 .messaging-scroll::-webkit-scrollbar {
   display: none;
 }
+
+/* ═══════════════════════════════════════════════
+   Onboarding – Resume Upload & Template Cards
+   ═══════════════════════════════════════════════ */
+
+/* Drop zone */
+.onboarding-dropzone {
+  position: relative;
+  border: 2px dashed #d1d5db;
+  border-radius: 1rem;
+  padding: 2.5rem 1.5rem;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  background: linear-gradient(135deg, rgba(59,130,246,0.02) 0%, rgba(255,255,255,0) 100%);
+}
+
+.onboarding-dropzone:hover {
+  border-color: #93c5fd;
+  background: linear-gradient(135deg, rgba(59,130,246,0.05) 0%, rgba(255,255,255,0) 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 24px rgba(59,130,246,0.08);
+}
+
+.onboarding-dropzone--active {
+  border-color: #3b82f6;
+  background: rgba(59,130,246,0.06);
+  box-shadow: 0 0 0 4px rgba(59,130,246,0.1);
+  transform: translateY(-2px);
+}
+
+/* Upload icon container */
+.onboarding-dropzone__icon {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+}
+
+.onboarding-dropzone__icon-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 2px solid rgba(59,130,246,0.15);
+  animation: onboarding-pulse 2.5s ease-in-out infinite;
+}
+
+@keyframes onboarding-pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50%      { transform: scale(1.18); opacity: 0.4; }
+}
+
+/* Template cards */
+.onboarding-template-card {
+  border-radius: 0.75rem;
+  border: 2px solid #e5e7eb;
+  overflow: hidden;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  background: white;
+  text-align: left;
+}
+
+.onboarding-template-card:hover {
+  border-color: #93c5fd;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+}
+
+.onboarding-template-card--selected {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59,130,246,0.15), 0 8px 24px rgba(59,130,246,0.10);
+  transform: translateY(-2px);
+}
+
+/* ═══════════════════════════════════════════════
+   Resume / Portfolio – Layout & Print Styles
+   ═══════════════════════════════════════════════ */
+
+/* Screen: resume page wrapper */
+.resume-page {
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+/* Resume section header accent */
+.resume-section-header {
+  position: relative;
+  padding-bottom: 8px;
+  margin-bottom: 16px;
+  border-bottom: 2.5px solid #0b0f19;
+}
+
+.resume-section-header--dark {
+  border-bottom-color: rgba(255, 255, 255, 0.2);
+}
+
+/* Skills / Hobbies multi-column grid */
+.resume-grid-items {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px 24px;
+}
+
+/* Contact label style */
+.resume-contact-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: rgba(255, 255, 255, 0.45);
+  margin-bottom: 2px;
+}
+
+.resume-contact-value {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.8);
+  word-break: break-word;
+}
+
+/* Sidebar bullet list */
+.resume-sidebar-list {
+  list-style: disc;
+  padding-left: 18px;
+}
+
+.resume-sidebar-list li {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.8);
+  margin-bottom: 4px;
+}
+
+/* Right-side bullet list */
+.resume-content-list {
+  list-style: disc;
+  padding-left: 18px;
+}
+
+.resume-content-list li {
+  font-size: 12px;
+  color: #4b5563;
+  margin-bottom: 4px;
+  line-height: 1.6;
+}
+
+/* Print: optimise for A4 PDF export
+   Goal: the printed PDF should look EXACTLY like the on-screen resume
+   with zero browser chrome, nav bars, or extra spacing.
+   ─────────────────────────────────────────────────── */
+@media print {
+  /* ── 1. Force background colours / images to render ── */
+  *,
+  *::before,
+  *::after {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
+
+  /* ── 2. A4 page with zero browser margins ── */
+  @page {
+    size: A4;
+    margin: 0;
+  }
+
+  /* ── 3. Reset html & body ── */
+  html, body {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: white !important;
+    width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
+    -webkit-overflow-scrolling: auto !important;
+  }
+
+  /* ── 4. Hide ALL app chrome & interactive elements ── */
+  /* Navigation, headers, action bars, buttons, overlays */
+  .no-print,
+  header,
+  nav,
+  aside,
+  .resume-actions,
+  .bottom-nav,
+  button,
+  [data-no-print],
+  /* Framer motion exit artifacts */
+  [data-framer-portal] {
+    display: none !important;
+  }
+
+  /* ── 5. Flatten the AppLayout wrapper ── */
+  /* AppLayout outer flex container */
+  body > #root > div,
+  body > #root {
+    display: block !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+  }
+
+  /* The main content area inside AppLayout (has md:pl-64, pt-14, pb-[60px]) */
+  body > #root > div > div {
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-height: auto !important;
+  }
+
+  /* ── 6. Strip the outer page background & spacing ── */
+  /* The PortfolioPage root wrapper (min-h-screen bg-gray-100 flex flex-col) */
+  main {
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  /* ── 7. Resume page wrapper — fill the page ── */
+  .resume-page {
+    max-width: none !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    border: none !important;
+  }
+
+  /* ── 8. Resume grid — the two-column document ── */
+  .resume-grid {
+    display: grid !important;
+    grid-template-columns: 280px 1fr !important;
+    min-height: 100vh !important;
+    border-radius: 0 !important;
+    overflow: visible !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+
+  /* ── 9. Sidebar — full page height with preserved colours ── */
+  .resume-sidebar {
+    min-height: 100vh !important;
+    padding: 32px 24px !important;
+  }
+
+  /* ── 10. Right content column ── */
+  .resume-grid > div:last-child {
+    padding: 32px !important;
+  }
+
+  /* ── 11. Prevent page breaks inside sections ── */
+  .resume-section {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .resume-grid-items {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  /* ── 12. Hide the ring/shadow on avatar for cleaner print ── */
+  .resume-sidebar img,
+  .resume-sidebar div[style] {
+    box-shadow: none !important;
+  }
+}
