@@ -79,6 +79,25 @@ export async function getMyRequests(userId) {
   return data || [];
 }
 
+export async function getMySentRequests(userId) {
+  const { data, error } = await supabase
+    .from('message_requests')
+    .select(`
+      id, intro_message, status, created_at, sender_id,
+      recipient:profiles!recipient_id(id, full_name, headline, avatar_url),
+      job:jobs!job_id(id, title, company:companies(name))
+    `)
+    .eq('sender_id', userId)
+    .eq('status', 'pending')
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('Failed to fetch sent requests:', error);
+    return [];
+  }
+  return data || [];
+}
+
 export async function respondToRequest(requestId, status, matchData) {
   const { error: updateError } = await supabase
     .from('message_requests')
