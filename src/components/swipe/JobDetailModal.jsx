@@ -201,26 +201,6 @@ export default function JobDetailModal({ node, isOpen, onClose, onApply, onSkip 
                   </div>
                 )}
 
-                {/* Required Skills */}
-                {node.skills_required && node.skills_required.length > 0 && (
-                  <div className="bg-white rounded-[24px] p-6 shadow-sm mb-4 border border-gray-100">
-                    <h3 className="text-[16px] font-bold text-gray-900 mb-4 flex items-center gap-2">
-                      <LayoutGrid className="w-5 h-5 text-gray-400" />
-                      Required Skills
-                    </h3>
-                    <div className="flex flex-wrap gap-2.5">
-                      {node.skills_required.map((skill, i) => (
-                        <span
-                          key={skill}
-                          className={`px-4 py-1.5 rounded-full text-[13px] font-semibold ${SKILL_COLORS[i % SKILL_COLORS.length]}`}
-                        >
-                          {skill}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
                 {/* Responsibilities */}
                 {node.responsibilities && node.responsibilities.length > 0 && (
                   <div className="bg-white rounded-[24px] p-6 shadow-sm mb-4 border border-gray-100">
@@ -254,6 +234,26 @@ export default function JobDetailModal({ node, isOpen, onClose, onApply, onSkip 
                         </li>
                       ))}
                     </ul>
+                  </div>
+                )}
+
+                {/* Required Skills */}
+                {node.skills_required && node.skills_required.length > 0 && (
+                  <div className="bg-white rounded-[24px] p-6 shadow-sm mb-4 border border-gray-100">
+                    <h3 className="text-[16px] font-bold text-gray-900 mb-4 flex items-center gap-2">
+                      <LayoutGrid className="w-5 h-5 text-gray-400" />
+                      Required Skills
+                    </h3>
+                    <div className="flex flex-wrap gap-2.5">
+                      {node.skills_required.map((skill, i) => (
+                        <span
+                          key={skill}
+                          className={`px-4 py-1.5 rounded-full text-[13px] font-semibold ${SKILL_COLORS[i % SKILL_COLORS.length]}`}
+                        >
+                          {skill}
+                        </span>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>

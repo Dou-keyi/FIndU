@@ -1,7 +1,7 @@
 // GlobePage.jsx — orchestrates Globe view and Swipe card flow for job/candidate discovery
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, ChevronDown } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { getCandidateGlobeNodes, getEmployerGlobeNodes } from '../lib/globeData';
 import { UniverseBackground } from '../components/UniverseBackground';
@@ -162,8 +162,8 @@ export default function GlobePage() {
               exit={{ opacity: 0, scale: 0.95 }}
               transition={{ duration: 0.8, delay: 0.4, ease: [0.22, 1, 0.36, 1] }}
             >
-              {/* Globe */}
-              <div className="min-h-[100dvh] flex flex-col items-center justify-center pt-16 lg:pt-0">
+              {/* Globe Container */}
+              <div className="relative min-h-[100dvh] flex flex-col items-center justify-center pt-16 lg:pt-0 pb-24">
                 <Globe
                   nodes={nodes}
                   profile={profile}
@@ -171,36 +171,60 @@ export default function GlobePage() {
                   onNodeClick={handleNodeClick}
                   loading={loading}
                 />
-              </div>
 
-              {/* Bottom info bar */}
-              {!loading && nodes.length > 0 && (
-                <motion.div
-                  className="text-center pb-4"
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.5 }}
-                >
-                  <p className="text-sm text-white/50">
-                    <span className="text-white/70 font-semibold">{nodes.length}</span>{' '}
-                    matches found · Tap a node to review
-                  </p>
-                </motion.div>
-              )}
+                {/* Bottom Overlay: Info Bar & Scroll Tip */}
+                <div className="absolute bottom-6 left-0 right-0 flex flex-col items-center pointer-events-none">
+                  {!loading && nodes.length > 0 && (
+                    <motion.div
+                      className="text-center mb-6 pointer-events-auto"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.5 }}
+                    >
+                      <p className="text-sm text-white/50">
+                        <span className="text-white/70 font-semibold">{nodes.length}</span>{' '}
+                        matches found · Tap a node to review
+                      </p>
+                    </motion.div>
+                  )}
 
-              {!loading && nodes.length === 0 && (
-                <div className="text-center pb-4">
-                  <p className="text-sm text-white/50">
-                    No new matches right now. Check back later!
-                  </p>
+                  {!loading && nodes.length === 0 && (
+                    <div className="text-center mb-6 pointer-events-auto">
+                      <p className="text-sm text-white/50">
+                        No new matches right now. Check back later!
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Scroll down tip */}
+                  {!loading && (
+                    <motion.div
+                      className="flex flex-col items-center justify-center opacity-60 hover:opacity-100 transition-opacity cursor-pointer pointer-events-auto"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ delay: 1, duration: 1 }}
+                      onClick={() => window.scrollTo({ top: window.innerHeight * 0.9, behavior: 'smooth' })}
+                    >
+                      <span className="text-[10px] font-bold text-white/40 tracking-[0.2em] uppercase mb-2">
+                        Scroll for Listings
+                      </span>
+                      <motion.div
+                        animate={{ y: [0, 5, 0] }}
+                        transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
+                      >
+                        <ChevronDown className="w-5 h-5 text-white/40" />
+                      </motion.div>
+                    </motion.div>
+                  )}
                 </div>
-              )}
+              </div>
 
               {/* Jobs List Section */}
               <JobsListSection 
                 profile={profile} 
                 onJobClick={handleShowJobDetail} 
                 onJobApply={handleJobApply} 
+                onCandidateClick={handleShowCandidateDetail}
               />
             </motion.div>
           ) : (

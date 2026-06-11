@@ -64,14 +64,21 @@ function CentreNode({ profile, role }) {
 function OrbitNode({ node, onNodeClick, stageSize, index }) {
   const cx = stageSize / 2;
   const cy = stageSize / 2;
-  const radius = node.ring === 1 ? (stageSize * 0.28) : (stageSize * 0.44);
-  const angleRad = (node.angle * Math.PI) / 180;
+  
+  // Distribute across 3 rings
+  const ringIndex = index % 3;
+  // Radii for the 3 rings
+  const radii = [stageSize * 0.22, stageSize * 0.36, stageSize * 0.50];
+  const radius = radii[ringIndex];
+  
+  // Use the angle from data, but add some offset based on index so they don't overlap if same ring
+  const angleRad = ((node.angle + (ringIndex * 30)) * Math.PI) / 180;
 
   const x = cx + radius * Math.cos(angleRad);
   const y = cy + radius * Math.sin(angleRad);
 
   const scoreClass = getScoreClass(node.matchScore);
-  const ringClass = node.ring === 1 ? 'globe-orbit-node--ring1' : 'globe-orbit-node--ring2';
+  const ringClass = `globe-orbit-node--ring${ringIndex + 1}`;
   const scorePercent = Math.round(node.matchScore * 100);
 
   // Stagger delay: centre fades in at 0.3s, each node adds 150ms
@@ -116,57 +123,8 @@ function OrbitNode({ node, onNodeClick, stageSize, index }) {
   );
 }
 
-/**
- * Globe — the main orbital layout component
- */
 export default function Globe({ nodes = [], profile, role, onNodeClick, loading }) {
-  const stageSize = 500;
-
-  // Decorative connection lines from centre to nodes
-  const connectionLines = useMemo(() => {
-    if (!nodes.length) return null;
-    const cx = stageSize / 2;
-    const cy = stageSize / 2;
-
-    return (
-      <motion.svg
-        className="absolute inset-0 pointer-events-none"
-        width={stageSize}
-        height={stageSize}
-        style={{ zIndex: 1 }}
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.8, delay: 0.6 }}
-      >
-        {nodes.map((node) => {
-          const radius = node.ring === 1 ? stageSize * 0.28 : stageSize * 0.44;
-          const angleRad = (node.angle * Math.PI) / 180;
-          const nx = cx + radius * Math.cos(angleRad);
-          const ny = cy + radius * Math.sin(angleRad);
-          const opacity = node.matchScore >= 0.8 ? 0.15 : 0.06;
-          const color = node.matchScore >= 0.8
-            ? '#1D9E75'
-            : node.matchScore >= 0.5
-              ? '#FF6B00'
-              : '#64748b';
-
-          return (
-            <line
-              key={node.id}
-              x1={cx}
-              y1={cy}
-              x2={nx}
-              y2={ny}
-              stroke={color}
-              strokeWidth={1}
-              strokeOpacity={opacity}
-              strokeDasharray="4 6"
-            />
-          );
-        })}
-      </motion.svg>
-    );
-  }, [nodes, stageSize]);
+  const stageSize = 650; // Increased size to match the spacious feel of the image
 
   if (loading) {
     return (
@@ -197,9 +155,12 @@ export default function Globe({ nodes = [], profile, role, onNodeClick, loading 
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.8, delay: 0.3 }}
         />
-
-        {/* Connection lines */}
-        {connectionLines}
+        <motion.div
+          className="globe-ring-trace globe-ring-trace--3"
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.8, delay: 0.4 }}
+        />
 
         {/* Centre user node */}
         <CentreNode profile={profile} role={role} />

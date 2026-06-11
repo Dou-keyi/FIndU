@@ -1,9 +1,9 @@
 // FeedJobCard.jsx — full-width job card for Jobs tab and Company page open roles
 import React, { useState } from 'react';
-import { MapPin, Briefcase, Building2, Loader2 } from 'lucide-react';
+import { MapPin, Briefcase, Building2, Loader2, Edit2, Trash2 } from 'lucide-react';
 import { getInitials, getAvatarColor } from '../../lib/avatarUtils';
 
-export default function FeedJobCard({ job, onViewDetail, onApply }) {
+export default function FeedJobCard({ job, onViewDetail, onApply, isEmployerForCompany, onEdit, onDelete }) {
   const [applying, setApplying] = useState(false);
 
   const companyName = job.company?.name || 'Company';
@@ -31,9 +31,21 @@ export default function FeedJobCard({ job, onViewDetail, onApply }) {
 
   return (
     <article 
-      className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 transition-all duration-300 hover:shadow-md hover:border-gray-200 group cursor-pointer"
+      className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 transition-all duration-300 hover:shadow-md hover:border-gray-200 group cursor-pointer relative"
       onClick={() => onViewDetail?.(job)}
     >
+      {isEmployerForCompany && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete?.(job.id);
+          }}
+          className="absolute top-4 right-4 p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-full transition-colors focus-visible:outline-none"
+          aria-label="Delete job"
+        >
+          <Trash2 className="w-4 h-4" />
+        </button>
+      )}
       <div className="flex items-start gap-4">
         {/* Company logo / initials */}
         <div
@@ -110,18 +122,32 @@ export default function FeedJobCard({ job, onViewDetail, onApply }) {
             >
               Details
             </button>
-            <button
-              onClick={handleApply}
-              disabled={applying || job.has_applied}
-              className={`flex-1 py-2 rounded-xl text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand flex items-center justify-center gap-2 ${
-                job.has_applied
-                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                  : 'bg-brand text-white hover:bg-brand-dark shadow-sm'
-              }`}
-            >
-              {applying && <Loader2 className="w-4 h-4 animate-spin" />}
-              {job.has_applied ? 'Applied' : applying ? 'Applying…' : 'Apply'}
-            </button>
+            
+            {isEmployerForCompany ? (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEdit?.(job.id);
+                }}
+                className="flex-1 py-2 rounded-xl text-sm font-semibold bg-emerald-500 text-white hover:bg-emerald-600 transition-colors flex items-center justify-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 shadow-sm"
+              >
+                <Edit2 className="w-4 h-4" />
+                Edit Job
+              </button>
+            ) : (
+              <button
+                onClick={handleApply}
+                disabled={applying || job.has_applied}
+                className={`flex-1 py-2 rounded-xl text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand flex items-center justify-center gap-2 ${
+                  job.has_applied
+                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                    : 'bg-brand text-white hover:bg-brand-dark shadow-sm'
+                }`}
+              >
+                {applying && <Loader2 className="w-4 h-4 animate-spin" />}
+                {job.has_applied ? 'Applied' : applying ? 'Applying…' : 'Apply'}
+              </button>
+            )}
           </div>
         </div>
       </div>

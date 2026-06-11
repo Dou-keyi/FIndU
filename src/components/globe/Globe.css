@@ -67,18 +67,14 @@
   width: 68px;
   height: 68px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #ffffff 0%, #EFF6FF 100%);
-  border: 2.5px solid #3B82F6;
+  background: #ffffff;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 22px;
   font-weight: 700;
   color: #3B82F6;
-  box-shadow:
-    0 0 0 4px rgba(59, 130, 246, 0.15),
-    0 0 24px rgba(59, 130, 246, 0.25),
-    0 4px 16px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 0 32px rgba(59, 130, 246, 0.5);
   position: relative;
   overflow: hidden;
 }
@@ -163,12 +159,13 @@
 /* Node circle */
 .globe-orbit-node__circle {
   border-radius: 50%;
-  background: linear-gradient(145deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.04) 100%);
+  background: rgba(20, 30, 48, 0.8);
   backdrop-filter: blur(10px);
   display: flex;
   align-items: center;
   justify-content: center;
   font-weight: 700;
+  color: #ffffff;
   transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1),
               box-shadow 0.3s ease;
   position: relative;
@@ -181,8 +178,15 @@
   font-size: 16px;
 }
 
-/* Ring 2: smaller nodes */
+/* Ring 2: medium nodes */
 .globe-orbit-node--ring2 .globe-orbit-node__circle {
+  width: 44px;
+  height: 44px;
+  font-size: 14px;
+}
+
+/* Ring 3: smaller nodes */
+.globe-orbit-node--ring3 .globe-orbit-node__circle {
   width: 38px;
   height: 38px;
   font-size: 13px;
@@ -190,49 +194,27 @@
 
 /* Score-based ring colours */
 .globe-orbit-node--score-high .globe-orbit-node__circle {
-  border: 2.5px solid #1D9E75;
-  color: #1D9E75;
-  box-shadow:
-    0 0 0 3px rgba(29, 158, 117, 0.12),
-    0 0 20px rgba(29, 158, 117, 0.2),
-    0 2px 12px rgba(0, 0, 0, 0.3);
+  border: 1.5px solid #10B981;
 }
 
 .globe-orbit-node--score-high:hover .globe-orbit-node__circle {
-  box-shadow:
-    0 0 0 3px rgba(29, 158, 117, 0.2),
-    0 0 32px rgba(29, 158, 117, 0.35),
-    0 4px 20px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.4);
 }
 
 .globe-orbit-node--score-mid .globe-orbit-node__circle {
-  border: 2.5px solid #FF6B00;
-  color: #FFD1B3;
-  box-shadow:
-    0 0 0 3px rgba(255, 107, 0, 0.12),
-    0 0 20px rgba(255, 107, 0, 0.3),
-    0 2px 12px rgba(0, 0, 0, 0.4);
+  border: 1.5px solid #F59E0B;
 }
 
 .globe-orbit-node--score-mid:hover .globe-orbit-node__circle {
-  box-shadow:
-    0 0 0 3px rgba(255, 107, 0, 0.25),
-    0 0 32px rgba(255, 107, 0, 0.5),
-    0 4px 20px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 0 20px rgba(245, 158, 11, 0.4);
 }
 
 .globe-orbit-node--score-low .globe-orbit-node__circle {
-  border: 2px solid rgba(148, 163, 184, 0.5);
-  color: #94a3b8;
-  box-shadow:
-    0 0 12px rgba(148, 163, 184, 0.1),
-    0 2px 12px rgba(0, 0, 0, 0.3);
+  border: 1.5px solid #64748B;
 }
 
 .globe-orbit-node--score-low:hover .globe-orbit-node__circle {
-  box-shadow:
-    0 0 20px rgba(148, 163, 184, 0.2),
-    0 4px 20px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 0 20px rgba(100, 116, 139, 0.4);
 }
 
 /* Node label */
@@ -293,9 +275,11 @@
   border-top-color: rgba(20, 18, 47, 0.92);
 }
 
-/* ========================================
-   Orbit ring traces — decorative
-   ======================================== */
+@keyframes ringSweep {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
 .globe-ring-trace {
   position: absolute;
   left: 50%;
@@ -304,24 +288,62 @@
   pointer-events: none;
 }
 
+.globe-ring-trace::before {
+  content: '';
+  position: absolute;
+  top: -1.5px; left: -1.5px; right: -1.5px; bottom: -1.5px;
+  border-radius: 50%;
+  border: 1.5px solid transparent;
+  -webkit-mask:
+    linear-gradient(#fff 0 0) padding-box, 
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: destination-out;
+  mask-composite: exclude;
+  animation: ringSweep 15s linear infinite;
+  opacity: 0.8;
+}
+
 .globe-ring-trace--1 {
-  width: 280px;
-  height: 280px;
-  margin-left: -140px;
-  margin-top: -140px;
-  border: 1.5px solid rgba(96, 165, 250, 0.2);
-  border-top-color: rgba(147, 197, 253, 0.6);
-  box-shadow: 0 0 40px rgba(59, 130, 246, 0.15);
+  width: 44%;
+  height: 44%;
+  margin-left: -22%;
+  margin-top: -22%;
+  border: 1.5px dashed rgba(255, 255, 255, 0.3);
+  box-shadow: 0 0 30px rgba(255, 255, 255, 0.15), inset 0 0 30px rgba(255, 255, 255, 0.15);
+}
+.globe-ring-trace--1::before {
+  background: conic-gradient(from 0deg, transparent 60%, rgba(255, 255, 255, 1) 100%) border-box;
+  animation-duration: 20s;
+  filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.9));
 }
 
 .globe-ring-trace--2 {
-  width: 440px;
-  height: 440px;
-  margin-left: -220px;
-  margin-top: -220px;
-  border: 1.5px solid rgba(34, 211, 238, 0.1);
-  border-bottom-color: rgba(103, 232, 249, 0.5);
-  box-shadow: 0 0 30px rgba(34, 211, 238, 0.1);
+  width: 72%;
+  height: 72%;
+  margin-left: -36%;
+  margin-top: -36%;
+  border: 1.5px dashed rgba(255, 255, 255, 0.25);
+  box-shadow: 0 0 40px rgba(191, 219, 254, 0.12), inset 0 0 40px rgba(191, 219, 254, 0.12);
+}
+.globe-ring-trace--2::before {
+  background: conic-gradient(from 0deg, transparent 70%, rgba(191, 219, 254, 1) 100%) border-box;
+  animation-duration: 35s;
+  animation-direction: reverse;
+  filter: drop-shadow(0 0 10px rgba(191, 219, 254, 0.9));
+}
+
+.globe-ring-trace--3 {
+  width: 100%;
+  height: 100%;
+  margin-left: -50%;
+  margin-top: -50%;
+  border: 1.5px dashed rgba(255, 255, 255, 0.2);
+  box-shadow: 0 0 50px rgba(96, 165, 250, 0.1), inset 0 0 50px rgba(96, 165, 250, 0.1);
+}
+.globe-ring-trace--3::before {
+  background: conic-gradient(from 0deg, transparent 80%, rgba(96, 165, 250, 1) 100%) border-box;
+  animation-duration: 50s;
+  filter: drop-shadow(0 0 10px rgba(96, 165, 250, 0.9));
 }
 
 /* ========================================
@@ -329,21 +351,15 @@
    ======================================== */
 @keyframes nodePulse {
   0%, 100% {
-    box-shadow:
-      0 0 0 3px rgba(29, 158, 117, 0.12),
-      0 0 20px rgba(29, 158, 117, 0.2),
-      0 2px 12px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 0 0 0px rgba(16, 185, 129, 0);
   }
   50% {
-    box-shadow:
-      0 0 0 5px rgba(29, 158, 117, 0.2),
-      0 0 30px rgba(29, 158, 117, 0.3),
-      0 2px 12px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 0 20px rgba(16, 185, 129, 0.3);
   }
 }
 
 .globe-orbit-node--score-high .globe-orbit-node__circle {
-  animation: nodePulse 3s ease-in-out infinite;
+  animation: nodePulse 4s ease-in-out infinite;
 }
 
 /* ========================================
@@ -366,15 +382,15 @@
 }
 
 .globe-orbit-node--score-high .globe-orbit-node__score {
-  background: #1D9E75;
+  background: #10B981;
 }
 
 .globe-orbit-node--score-mid .globe-orbit-node__score {
-  background: #FF6B00;
+  background: #F59E0B;
 }
 
 .globe-orbit-node--score-low .globe-orbit-node__score {
-  background: #64748b;
+  background: #64748B;
 }
 
 /* ========================================
@@ -400,9 +416,15 @@
   }
 
   .globe-orbit-node--ring2 .globe-orbit-node__circle {
-    width: 30px;
-    height: 30px;
-    font-size: 11px;
+    width: 34px;
+    height: 34px;
+    font-size: 12px;
+  }
+
+  .globe-orbit-node--ring3 .globe-orbit-node__circle {
+    width: 28px;
+    height: 28px;
+    font-size: 10px;
   }
 
   .globe-orbit-node__label {
@@ -410,19 +432,7 @@
     max-width: 70px;
   }
 
-  .globe-ring-trace--1 {
-    width: 190px;
-    height: 190px;
-    margin-left: -95px;
-    margin-top: -95px;
-  }
-
-  .globe-ring-trace--2 {
-    width: 300px;
-    height: 300px;
-    margin-left: -150px;
-    margin-top: -150px;
-  }
+  /* Ring classes use percentages now, so we don't need fixed px values here */
 }
 
 @media (max-width: 480px) {

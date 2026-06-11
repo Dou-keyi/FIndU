@@ -19,7 +19,8 @@ export async function getFeedPosts(tab, hashtag) {
       .select(`
         *,
         author:profiles!author_id(id, full_name, headline, avatar_url, skills, role),
-        company:companies!company_id(id, name, logo_url)
+        company:companies!company_id(id, name, logo_url, owner_id),
+        job:jobs!job_id(id, title, work_type, experience_level, location, status)
       `)
       .order('created_at', { ascending: false });
 
@@ -53,7 +54,7 @@ export async function getFeedJobs(userProfile) {
   try {
     const { data, error } = await supabase
       .from('jobs')
-      .select('*, company:companies(id, name, logo_url)')
+      .select('*, company:companies(id, name, logo_url, owner_id)')
       .eq('status', 'open')
       .order('created_at', { ascending: false })
       .limit(20);
@@ -101,7 +102,7 @@ export async function getFeedJobs(userProfile) {
 /**
  * Create a new post
  */
-export async function createPost(userId, content, hashtags, postType, companyId = null) {
+export async function createPost(userId, content, hashtags, postType, companyId = null, jobId = null) {
   try {
     // Normalise hashtags — strip # prefix for storage
     const cleanTags = (hashtags || []).map((t) => t.replace(/^#/, '').trim()).filter(Boolean);
@@ -114,11 +115,13 @@ export async function createPost(userId, content, hashtags, postType, companyId 
         content,
         hashtags: cleanTags,
         post_type: postType,
+        job_id: jobId,
       })
       .select(`
         *,
         author:profiles!author_id(id, full_name, headline, avatar_url, skills, role),
-        company:companies!company_id(id, name, logo_url)
+        company:companies!company_id(id, name, logo_url, owner_id),
+        job:jobs!job_id(id, title, work_type, experience_level, location, status)
       `)
       .single();
 
@@ -201,7 +204,7 @@ export async function searchJobs(userProfile, filters = {}) {
   try {
     let query = supabase
       .from('jobs')
-      .select('*, company:companies(id, name, logo_url)')
+      .select('*, company:companies(id, name, logo_url, owner_id)')
       .eq('status', 'open');
 
     if (filters.title) {
@@ -255,6 +258,38 @@ export async function searchJobs(userProfile, filters = {}) {
     return jobs;
   } catch (err) {
     console.error('Failed to search jobs:', err);
+    return [];
+  }
+}
+
+/**
+ * Search candidates with advanced filters
+ */
+export async function searchCandidates(filters = {}) {
+  try {
+    let query = supabase
+      .from('profiles')
+      .select('*')
+      .eq('role', 'candidate');
+
+    if (filters.keyword) {
+      // Search in full_name or headline using OR
+      query = query.or(`full_name.ilike.%${filters.keyword}%,headline.ilike.%${filters.keyword}%`);
+    }
+    if (filters.location) {
+      query = query.ilike('location', `%${filters.location}%`);
+    }
+    if (filters.workType && filters.workType !== 'all') {
+      // work_type in profiles is a text array, so we check if array contains the workType
+      query = query.contains('work_type', [filters.workType]);
+    }
+
+    const { data, error } = await query.order('created_at', { ascending: false }).limit(50);
+
+    if (error) throw error;
+    return data || [];
+  } catch (err) {
+    console.error('Failed to search candidates:', err);
     return [];
   }
 }

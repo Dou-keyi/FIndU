@@ -1,7 +1,7 @@
 // PostCard.jsx — renders candidate or company post cards in the social feed
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Building2 } from 'lucide-react';
+import { Building2, Briefcase } from 'lucide-react';
 import { getInitials, getAvatarColor } from '../../lib/avatarUtils';
 import { formatRelativeTime } from '../../lib/relativeTime';
 
@@ -75,6 +75,40 @@ export default function PostCard({ post, viewerRole }) {
               </button>
             );
           })}
+        </div>
+      )}
+
+      {/* Embedded Job */}
+      {post.job && (
+        <div className="mt-3 mb-2 border border-brand/20 bg-brand/5 rounded-xl p-4 flex items-start gap-4">
+          <div className="w-10 h-10 bg-brand/10 text-brand rounded-lg flex items-center justify-center shrink-0">
+            <Briefcase className="w-5 h-5" />
+          </div>
+          <div className="flex-1">
+            <h4 className="font-semibold text-gray-900 text-sm">{post.job.title}</h4>
+            <div className="flex flex-wrap gap-2 mt-1.5">
+              <span className="text-[10px] font-medium px-2 py-0.5 bg-white border border-brand/10 rounded text-brand">
+                {post.job.work_type}
+              </span>
+              <span className="text-[10px] font-medium px-2 py-0.5 bg-white border border-brand/10 rounded text-brand">
+                {post.job.experience_level}
+              </span>
+              {post.job.location && (
+                <span className="text-[10px] font-medium px-2 py-0.5 bg-white border border-brand/10 rounded text-brand">
+                  {post.job.location}
+                </span>
+              )}
+            </div>
+          </div>
+          <button 
+            className="text-xs font-semibold bg-brand text-white px-3 py-1.5 rounded-lg hover:bg-brand/90 transition-colors"
+            onClick={() => {
+              // Usually we'd open a job modal, for now just log or handle
+              console.log('View job', post.job.id);
+            }}
+          >
+            View
+          </button>
         </div>
       )}
 
