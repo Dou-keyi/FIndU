@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
-  Loader2, Trash2, Download, Upload, ChevronLeft, Palette, Sparkles, CheckCircle2
+  Loader2, Trash2, Download, Upload, Palette, Sparkles, CheckCircle2, X
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { usePortfolioSuggestion } from '../context/PortfolioSuggestionContext';
@@ -34,13 +34,28 @@ export default function PortfolioPage() {
   const [showTemplateSwitcher, setShowTemplateSwitcher] = useState(false);
   const [changingTemplate, setChangingTemplate] = useState(false);
 
+  // Accent Color state
+  const CURATED_COLORS = ['#3b82f6', '#8b5cf6', '#10b981', '#f43f5e', '#f97316', '#64748b'];
+  const [savingAccent, setSavingAccent] = useState(false);
+  const [customHex, setCustomHex] = useState('');
+
+  // Header Color state
+  const CURATED_GRADIENTS = [
+    'linear-gradient(135deg, #1e293b, #0f172a)', // Slate
+    'linear-gradient(135deg, #4c1d95, #7c3aed)', // Purple
+    'linear-gradient(135deg, #166534, #10b981)', // Green
+    'linear-gradient(135deg, #9f1239, #f43f5e)', // Rose
+    'linear-gradient(135deg, #ea580c, #f97316)', // Orange
+    'linear-gradient(135deg, #0ea5e9, #3b82f6)', // Ocean
+    'linear-gradient(135deg, #171717, #404040)', // Neutral
+  ];
+  const [savingHeaderColor, setSavingHeaderColor] = useState(false);
+  const [customHeaderColor1, setCustomHeaderColor1] = useState('');
+  const [customHeaderColor2, setCustomHeaderColor2] = useState('');
+
   // Inline editing state
   const [addingType, setAddingType] = useState(null);
   const [editingItem, setEditingItem] = useState(null);
-  
-  // Prompt state
-  const [feedPromptItem, setFeedPromptItem] = useState(null);
-  const [sharingToFeed, setSharingToFeed] = useState(false);
 
   // Profile inline editing
   const [editingProfile, setEditingProfile] = useState(false);
@@ -49,6 +64,11 @@ export default function PortfolioPage() {
   const [editPhone, setEditPhone] = useState('');
   const [editLocation, setEditLocation] = useState('');
   const [savingProfile, setSavingProfile] = useState(false);
+
+  // Skills inline editing
+  const [editingSkills, setEditingSkills] = useState(false);
+  const [editSkillsInput, setEditSkillsInput] = useState('');
+  const [savingSkills, setSavingSkills] = useState(false);
 
   // Avatar upload
   const avatarInputRef = useRef(null);
@@ -114,6 +134,20 @@ export default function PortfolioPage() {
       setEditHeadline(targetProfile.headline || '');
       setEditPhone(targetProfile.phone || '');
       setEditLocation(targetProfile.location || '');
+      setEditSkillsInput(''); // Clear input when profile loads
+      setCustomHex(targetProfile.resume_accent_color || '');
+      
+      const headerColor = targetProfile.resume_header_color || '';
+      if (headerColor.includes('linear-gradient')) {
+        const matches = headerColor.match(/#([0-9a-fA-F]{6})/g);
+        if (matches && matches.length >= 2) {
+          setCustomHeaderColor1(matches[0]);
+          setCustomHeaderColor2(matches[1]);
+        }
+      } else {
+        setCustomHeaderColor1(headerColor);
+        setCustomHeaderColor2('');
+      }
     }
   }, [targetProfile]);
 
@@ -132,8 +166,7 @@ export default function PortfolioPage() {
           .insert({ candidate_id: user.id, item_type: itemData.item_type, title: itemData.title, description: itemData.description, tags: itemData.tags, source: 'manual' })
           .select().single();
         if (error) throw error;
-        setPortfolioItems((prev) => [data, ...prev]);
-        setFeedPromptItem(data);
+        setPortfolioItems((prev) => [...prev, data]);
       }
       setAddingType(null);
       setEditingItem(null);
@@ -172,6 +205,37 @@ export default function PortfolioPage() {
       }
     } catch (err) { console.error('Profile update failed:', err); }
     finally { setSavingProfile(false); }
+  };
+
+  const handleSaveSkills = async () => {
+    setSavingSkills(true);
+    try {
+      const newSkills = editSkillsInput.split(',').map(s => s.trim()).filter(Boolean);
+      const existingSkills = targetProfile.skills || [];
+      const mergedSkills = [...new Set([...existingSkills, ...newSkills])];
+
+      const { error } = await supabase.from('profiles')
+        .update({ skills: mergedSkills })
+        .eq('id', targetProfile.id);
+      if (!error) {
+        setTargetProfile((p) => ({ ...p, skills: mergedSkills }));
+        setEditingSkills(false);
+        setEditSkillsInput('');
+      }
+    } catch (err) { console.error('Skills update failed:', err); }
+    finally { setSavingSkills(false); }
+  };
+
+  const handleDeleteSkill = async (skillToRemove) => {
+    try {
+      const newSkills = (targetProfile.skills || []).filter(s => s !== skillToRemove);
+      const { error } = await supabase.from('profiles')
+        .update({ skills: newSkills })
+        .eq('id', targetProfile.id);
+      if (!error) {
+        setTargetProfile((p) => ({ ...p, skills: newSkills }));
+      }
+    } catch (err) { console.error('Delete skill failed:', err); }
   };
 
   // Message handler
@@ -301,11 +365,42 @@ export default function PortfolioPage() {
         .eq('id', user.id);
       if (error) throw error;
       setTargetProfile(p => ({ ...p, resume_template: templateId }));
-      setShowTemplateSwitcher(false);
     } catch (err) {
       console.error('Template change failed:', err);
     } finally {
       setChangingTemplate(false);
+    }
+  };
+
+  const handleSaveAccentColor = async (color) => {
+    setSavingAccent(true);
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ resume_accent_color: color })
+        .eq('id', user.id);
+      if (error) throw error;
+      setTargetProfile(p => ({ ...p, resume_accent_color: color }));
+    } catch (err) {
+      console.error('Accent color update failed:', err);
+    } finally {
+      setSavingAccent(false);
+    }
+  };
+
+  const handleSaveHeaderColor = async (color) => {
+    setSavingHeaderColor(true);
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ resume_header_color: color })
+        .eq('id', user.id);
+      if (error) throw error;
+      setTargetProfile(p => ({ ...p, resume_header_color: color }));
+    } catch (err) {
+      console.error('Header color update failed:', err);
+    } finally {
+      setSavingHeaderColor(false);
     }
   };
 
@@ -347,7 +442,9 @@ export default function PortfolioPage() {
       setEditHeadline('');
       setEditPhone('');
       setEditLocation('');
+      setEditSkillsInput('');
       setEditingProfile(false);
+      setEditingSkills(false);
       setAddingType(null);
       setEditingItem(null);
     } catch (err) {
@@ -429,14 +526,11 @@ export default function PortfolioPage() {
       )}
       {/* ── Action bar (hidden in print) ── */}
       <div className="resume-actions sticky top-0 z-30 bg-white/80 backdrop-blur border-b border-gray-200 no-print">
-        <div className="resume-page flex items-center justify-between px-4 py-2.5">
+        <div className="flex items-center justify-between px-4 py-2.5">
           <div className="flex items-center gap-3">
-            <button onClick={() => navigate(-1)} className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors">
-              <ChevronLeft className="w-5 h-5 text-gray-500" />
-            </button>
-            <h2 className="text-sm font-semibold text-gray-800">
-              {isOwn ? 'My Resume' : `${targetProfile?.full_name || 'Candidate'}'s Resume`}
-            </h2>
+            <h1 className="text-xl font-bold text-slate-900 px-2">
+              {isOwn ? 'My Portfolio' : `${targetProfile?.full_name || 'Candidate'}'s Portfolio`}
+            </h1>
           </div>
           <div className="flex items-center gap-2">
             {isOwn && (
@@ -447,52 +541,11 @@ export default function PortfolioPage() {
               </button>
             )}
             {isOwn && (
-              <div className="relative">
-                <button onClick={() => setShowTemplateSwitcher(!showTemplateSwitcher)}
-                  className="flex items-center gap-1.5 px-4 py-2 rounded-lg border border-gray-200 text-gray-700 text-xs font-semibold hover:bg-gray-50 transition-colors">
-                  <Palette className="w-3.5 h-3.5" />
-                  Template
-                </button>
-                {showTemplateSwitcher && (
-                  <div className="absolute right-0 top-full mt-2 w-72 bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden z-50 p-2 text-left">
-                    <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2 px-2 pt-2">Choose Template</h3>
-                    <div className="space-y-1">
-                      {templates.map(t => {
-                        const isScanned = !!t.candidate_id;
-                        const isActive = activeTemplate.id === t.id;
-                        return (
-                          <button key={t.id} onClick={() => handleChangeTemplate(t.id)} disabled={changingTemplate}
-                            className={`w-full flex items-center justify-between p-2.5 rounded-lg transition-colors text-left disabled:opacity-50 ${
-                              isActive ? 'bg-brand-50 ring-1 ring-brand/20' : 'hover:bg-gray-50'
-                            }`}>
-                            <div className="flex items-center gap-2.5">
-                              <div className={`w-7 h-7 rounded-md bg-gradient-to-br ${t.gradient} flex items-center justify-center shrink-0`}>
-                                {isScanned && (
-                                  <Sparkles className="w-3 h-3 text-white/80" />
-                                )}
-                              </div>
-                              <div className="min-w-0">
-                                <div className="flex items-center gap-1.5">
-                                  <p className={`text-sm font-semibold leading-tight ${
-                                    isActive ? 'text-brand' : 'text-gray-800'
-                                  }`}>{t.name}</p>
-                                  {isScanned && (
-                                    <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider bg-violet-100 text-violet-600">
-                                      Scanned
-                                    </span>
-                                  )}
-                                </div>
-                                <p className="text-[10px] text-gray-500 truncate max-w-[160px]">{t.description}</p>
-                              </div>
-                            </div>
-                            {isActive && <CheckCircle2 className="w-4 h-4 text-brand shrink-0" />}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-              </div>
+              <button onClick={() => setShowTemplateSwitcher(!showTemplateSwitcher)}
+                className={`flex items-center gap-1.5 px-4 py-2 rounded-lg border text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand ${showTemplateSwitcher ? 'bg-brand-50 border-brand-200 text-brand' : 'border-gray-200 text-gray-700 hover:bg-gray-50'}`}>
+                <Palette className="w-3.5 h-3.5" />
+                Customize
+              </button>
             )}
             {isOwn && (
               <button onClick={() => setShowImportModal(true)}
@@ -524,38 +577,215 @@ export default function PortfolioPage() {
       )}
 
       {/* ══ Resume Document — Layout Selector ══ */}
-      <main className="flex-1 px-4 py-6 md:py-8">
-        <div className="resume-page">
-          {(() => {
-            // Scanned/custom templates always use Professional layout
-            // System templates use their specific layout
-            const templateId = activeTemplate.id;
-            const isScanned = !!activeTemplate.candidate_id;
-            const layoutProps = {
-              targetProfile, user, isOwn, activeTemplate,
-              portfolioItems, itemsByType,
-              addingType, setAddingType,
-              editingItem, setEditingItem,
-              editingProfile, setEditingProfile,
-              editName, setEditName, editHeadline, setEditHeadline,
-              editPhone, setEditPhone, editLocation, setEditLocation,
-              savingProfile, handleSaveProfile,
-              avatarInputRef, uploadingAvatar, handleAvatarUpload,
-              handleSaveItem, handleDeleteItem,
-              initials, avatarColor, navigate
-            };
+      <main className="flex-1 px-4 py-6 md:py-8 transition-all duration-300 flex justify-center">
+        <div className="flex flex-col xl:flex-row items-center xl:items-start gap-6 w-full max-w-[1250px] justify-center relative">
+          <div className="resume-page w-full min-w-0">
+            {(() => {
+              // Scanned/custom templates always use Professional layout
+              // System templates use their specific layout
+              const templateId = activeTemplate.id;
+              const isScanned = !!activeTemplate.candidate_id;
+              const activeAccent = targetProfile?.resume_accent_color || activeTemplate.accent;
+              const activeHeaderColor = targetProfile?.resume_header_color || null;
 
-            if (isScanned || templateId === 'professional' || !templateId) {
-              return <ProfessionalLayout {...layoutProps} />;
-            } else if (templateId === 'creative') {
-              return <CreativeLayout {...layoutProps} />;
-            } else if (templateId === 'minimal') {
-              return <MinimalLayout {...layoutProps} />;
-            } else {
-              // Fallback: professional
-              return <ProfessionalLayout {...layoutProps} />;
-            }
-          })()}
+              const layoutProps = {
+                targetProfile, user, isOwn, activeTemplate, activeAccent, activeHeaderColor,
+                portfolioItems, itemsByType,
+                addingType, setAddingType,
+                editingItem, setEditingItem,
+                editingProfile, setEditingProfile,
+                editingSkills, setEditingSkills,
+                editSkillsInput, setEditSkillsInput,
+                savingSkills, handleSaveSkills, handleDeleteSkill,
+                editName, setEditName, editHeadline, setEditHeadline,
+                editPhone, setEditPhone, editLocation, setEditLocation,
+                savingProfile, handleSaveProfile,
+                avatarInputRef, uploadingAvatar, handleAvatarUpload,
+                handleSaveItem, handleDeleteItem,
+                initials, avatarColor, navigate
+              };
+
+              if (isScanned || templateId === 'professional' || !templateId) {
+                return <ProfessionalLayout {...layoutProps} />;
+              } else if (templateId === 'creative') {
+                return <CreativeLayout {...layoutProps} />;
+              } else if (templateId === 'minimal') {
+                return <MinimalLayout {...layoutProps} />;
+              } else {
+                // Fallback: professional
+                return <ProfessionalLayout {...layoutProps} />;
+              }
+            })()}
+          </div>
+
+          {/* ── Theme Settings Side Panel ── */}
+          {isOwn && showTemplateSwitcher && (
+            <aside className="fixed xl:sticky top-24 right-4 md:right-8 xl:right-auto w-80 shrink-0 bg-white shadow-2xl rounded-2xl border border-gray-200 z-50 flex flex-col max-h-[calc(100vh-8rem)] no-print animate-slide-in">
+              <div className="flex items-center justify-between p-4 border-b border-gray-100">
+            <h2 className="text-sm font-bold text-gray-900 flex items-center gap-2">
+              <Palette className="w-4 h-4 text-brand" /> Theme Settings
+            </h2>
+            <button onClick={() => setShowTemplateSwitcher(false)} className="p-1.5 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+          
+          <div className="p-4 overflow-y-auto hide-scrollbar space-y-6">
+            {/* Template Selection */}
+            <div>
+              <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-3">Choose Template</h3>
+              <div className="space-y-2">
+                {templates.map(t => {
+                  const isScanned = !!t.candidate_id;
+                  const isActive = (targetProfile?.resume_template === t.id) || (!targetProfile?.resume_template && t.id === 'professional');
+                  return (
+                    <button key={t.id} onClick={() => handleChangeTemplate(t.id)} disabled={changingTemplate}
+                      className={`w-full flex items-center justify-between p-3 rounded-xl border transition-colors text-left disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand ${
+                        isActive ? 'bg-brand-50 border-brand-200 ring-1 ring-brand/20' : 'bg-white border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                      }`}>
+                      <div className="flex items-center gap-3">
+                        <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${t.gradient} flex items-center justify-center shrink-0 shadow-inner`}>
+                          {isScanned && <Sparkles className="w-4 h-4 text-white/90" />}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <p className={`text-sm font-semibold leading-tight ${isActive ? 'text-brand' : 'text-gray-900'}`}>
+                              {t.name}
+                            </p>
+                            {isScanned && (
+                              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider bg-violet-100 text-violet-600">
+                                Scanned
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[10px] text-gray-500 mt-0.5 leading-snug">{t.description}</p>
+                        </div>
+                      </div>
+                      {isActive && <CheckCircle2 className="w-5 h-5 text-brand shrink-0" />}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <hr className="border-gray-100" />
+
+            {/* Theme Color */}
+            <div>
+              <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-3">Theme Color</h3>
+              <div className="flex items-center gap-2.5 mb-3 flex-wrap">
+                {CURATED_COLORS.map(color => (
+                  <button
+                    key={color}
+                    onClick={() => handleSaveAccentColor(color)}
+                    disabled={savingAccent}
+                    className={`w-7 h-7 rounded-full shrink-0 transition-all hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-gray-400 ${
+                      targetProfile?.resume_accent_color === color ? 'ring-2 ring-offset-2 ring-gray-900 scale-110' : ''
+                    }`}
+                    style={{ backgroundColor: color }}
+                    aria-label={`Select ${color} color`}
+                  />
+                ))}
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="relative flex-1">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs font-mono">#</span>
+                  <input
+                    type="text"
+                    placeholder="Hex color"
+                    value={customHex.replace('#', '')}
+                    onChange={(e) => setCustomHex('#' + e.target.value.replace(/[^0-9A-Fa-f]/g, '').slice(0, 6))}
+                    onKeyDown={(e) => { if (e.key === 'Enter' && customHex.length === 7) handleSaveAccentColor(customHex); }}
+                    className="w-full pl-7 pr-3 py-2 text-sm font-mono border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand/50 transition-shadow"
+                  />
+                </div>
+                <button
+                  onClick={() => handleSaveAccentColor(customHex)}
+                  disabled={savingAccent || customHex.length !== 7}
+                  className="px-4 py-2 bg-gray-900 text-white text-sm font-semibold rounded-lg hover:bg-gray-800 disabled:opacity-50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:ring-gray-900"
+                >
+                  {savingAccent ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Apply'}
+                </button>
+              </div>
+              {targetProfile?.resume_accent_color && (
+                <button
+                  onClick={() => { setCustomHex(''); handleSaveAccentColor(null); }}
+                  className="mt-2 text-xs text-gray-500 hover:text-red-500 font-medium transition-colors"
+                >
+                  Reset to template default
+                </button>
+              )}
+            </div>
+
+            <hr className="border-gray-100" />
+
+            {/* Header Color / Gradient */}
+            <div>
+              <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-3">Header Background</h3>
+              <div className="flex items-center gap-2 mb-3 flex-wrap">
+                {CURATED_GRADIENTS.map(gradient => (
+                  <button
+                    key={gradient}
+                    onClick={() => handleSaveHeaderColor(gradient)}
+                    disabled={savingHeaderColor}
+                    className={`w-7 h-7 rounded-full shrink-0 transition-all hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-gray-400 ${
+                      targetProfile?.resume_header_color === gradient ? 'ring-2 ring-offset-2 ring-gray-900 scale-110' : ''
+                    }`}
+                    style={{ background: gradient }}
+                    aria-label={`Select gradient`}
+                  />
+                ))}
+              </div>
+              <div className="space-y-2">
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs font-mono">#</span>
+                    <input
+                      type="text"
+                      placeholder="Color 1"
+                      value={customHeaderColor1.replace('#', '')}
+                      onChange={(e) => setCustomHeaderColor1('#' + e.target.value.replace(/[^0-9A-Fa-f]/g, '').slice(0, 6))}
+                      className="w-full pl-6 pr-2 py-2 text-sm font-mono border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand/50 transition-shadow"
+                    />
+                  </div>
+                  <div className="relative flex-1">
+                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs font-mono">#</span>
+                    <input
+                      type="text"
+                      placeholder="Color 2 (Opt)"
+                      value={customHeaderColor2.replace('#', '')}
+                      onChange={(e) => setCustomHeaderColor2('#' + e.target.value.replace(/[^0-9A-Fa-f]/g, '').slice(0, 6))}
+                      className="w-full pl-6 pr-2 py-2 text-sm font-mono border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand/50 transition-shadow"
+                    />
+                  </div>
+                </div>
+                <div className="flex justify-between items-center">
+                  {targetProfile?.resume_header_color ? (
+                    <button
+                      onClick={() => { setCustomHeaderColor1(''); setCustomHeaderColor2(''); handleSaveHeaderColor(null); }}
+                      className="text-xs text-gray-500 hover:text-red-500 font-medium transition-colors"
+                    >
+                      Reset to template default
+                    </button>
+                  ) : <span />}
+                  <button
+                    onClick={() => {
+                      const val = customHeaderColor2?.length === 7 
+                        ? `linear-gradient(135deg, ${customHeaderColor1}, ${customHeaderColor2})`
+                        : customHeaderColor1;
+                      handleSaveHeaderColor(val);
+                    }}
+                    disabled={savingHeaderColor || customHeaderColor1.length !== 7}
+                    className="px-4 py-2 bg-gray-900 text-white text-sm font-semibold rounded-lg hover:bg-gray-800 disabled:opacity-50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:ring-gray-900"
+                  >
+                    {savingHeaderColor ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Apply'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </aside>
+      )}
         </div>
       </main>
 

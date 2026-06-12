@@ -11,11 +11,14 @@ import {
 } from './SharedComponents';
 
 export default function CreativeLayout({
-  targetProfile, user, isOwn, activeTemplate,
+  targetProfile, user, isOwn, activeTemplate, activeAccent, activeHeaderColor,
   portfolioItems, itemsByType,
   addingType, setAddingType,
   editingItem, setEditingItem,
   editingProfile, setEditingProfile,
+  editingSkills, setEditingSkills,
+  editSkillsInput, setEditSkillsInput,
+  savingSkills, handleSaveSkills, handleDeleteSkill,
   editName, setEditName, editHeadline, setEditHeadline,
   editPhone, setEditPhone, editLocation, setEditLocation,
   savingProfile, handleSaveProfile,
@@ -23,7 +26,7 @@ export default function CreativeLayout({
   handleSaveItem, handleDeleteItem,
   initials, avatarColor, navigate
 }) {
-  const accent = activeTemplate.accent || '#7c3aed';
+  const accent = activeAccent || '#7c3aed';
   const sections = ['summary', 'education', 'experience', 'project', 'achievement', 'certification', 'language'];
 
   const renderSection = (type) => {
@@ -114,7 +117,10 @@ export default function CreativeLayout({
       {/* ════════════════════════════════
           HEADER BAND (Full-width, colored)
          ════════════════════════════════ */}
-      <div className={`creative-header bg-gradient-to-r ${activeTemplate.gradient} px-8 py-8 md:py-10`}>
+      <div 
+        className={`creative-header px-8 py-8 md:py-10 ${!activeHeaderColor ? `bg-gradient-to-r ${activeTemplate.gradient}` : ''}`}
+        style={activeHeaderColor ? { background: activeHeaderColor } : {}}
+      >
         <div className="flex items-center gap-6 md:gap-8">
           {/* Avatar — rounded square */}
           <div className="relative group shrink-0">
@@ -253,25 +259,61 @@ export default function CreativeLayout({
         {sections.map((type) => renderSection(type))}
 
         {/* Skills as colored pills */}
-        {(targetProfile?.skills || []).length > 0 && (
-          <div className="creative-card resume-section" style={{ borderLeftColor: accent }}>
-            <div className="flex items-center gap-2.5 mb-3">
-              <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: accent + '18' }}>
-                <Sparkles className="w-4 h-4" style={{ color: accent }} />
+        {(isOwn || (targetProfile?.skills || []).length > 0) && (
+          <div className="creative-card resume-section group" style={{ borderLeftColor: accent }}>
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: accent + '18' }}>
+                  <Sparkles className="w-4 h-4" style={{ color: accent }} />
+                </div>
+                <h3 className="text-sm font-extrabold uppercase tracking-widest text-gray-900">Skills</h3>
               </div>
-              <h3 className="text-sm font-extrabold uppercase tracking-widest text-gray-900">Skills</h3>
+              {isOwn && (
+                <button onClick={() => { setEditingSkills(true); setEditSkillsInput(''); }}
+                  className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors opacity-0 group-hover:opacity-100 no-print">
+                  <Plus className="w-3.5 h-3.5 text-gray-400" />
+                </button>
+              )}
             </div>
-            <div className="flex flex-wrap gap-2">
-              {targetProfile.skills.map((skill) => (
-                <span key={skill} className="creative-skill-pill" style={{
-                  backgroundColor: accent + '12',
-                  color: accent,
-                  borderColor: accent + '30'
-                }}>
-                  {skill}
-                </span>
-              ))}
-            </div>
+            
+            {editingSkills ? (
+               <div className="space-y-2 no-print">
+                 <input className="w-full border border-gray-200 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand/30"
+                   value={editSkillsInput} onChange={(e) => setEditSkillsInput(e.target.value)} placeholder="e.g. React, Node.js, Python (comma separated)" autoFocus onKeyDown={(e) => { if(e.key === 'Enter') handleSaveSkills(); }} />
+                 <div className="flex gap-2 pt-1">
+                   <button onClick={handleSaveSkills} disabled={savingSkills}
+                     className="flex items-center gap-1 px-3 py-1.5 rounded-md bg-brand text-white text-xs font-semibold hover:bg-brand-dark disabled:opacity-50">
+                     <Check className="w-3 h-3" /> Save
+                   </button>
+                   <button onClick={() => { setEditingSkills(false); setEditSkillsInput(''); }}
+                     className="flex items-center gap-1 px-3 py-1.5 rounded-md border border-gray-200 text-xs text-gray-500 hover:bg-gray-50">
+                     <X className="w-3 h-3" /> Cancel
+                   </button>
+                 </div>
+               </div>
+            ) : (
+              <>
+                <div className="flex flex-wrap gap-2">
+                  {(targetProfile?.skills || []).map((skill) => (
+                    <span key={skill} className="creative-skill-pill group/skill flex items-center gap-1.5" style={{
+                      backgroundColor: accent + '12',
+                      color: accent,
+                      borderColor: accent + '30'
+                    }}>
+                      {skill}
+                      {isOwn && (
+                        <button onClick={() => handleDeleteSkill(skill)} className="p-0.5 rounded opacity-0 group-hover/skill:opacity-100 transition-opacity no-print" style={{ color: accent }}>
+                          <X className="w-2.5 h-2.5" />
+                        </button>
+                      )}
+                    </span>
+                  ))}
+                </div>
+                {isOwn && (targetProfile?.skills || []).length === 0 && (
+                  <p className="text-xs italic text-gray-300">No skills added yet.</p>
+                )}
+              </>
+            )}
           </div>
         )}
 

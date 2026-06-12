@@ -7,11 +7,14 @@ import { motion } from 'framer-motion';
 import { SECTION_META, InlineItemForm } from './SharedComponents';
 
 export default function MinimalLayout({
-  targetProfile, user, isOwn, activeTemplate,
+  targetProfile, user, isOwn, activeTemplate, activeAccent,
   portfolioItems, itemsByType,
   addingType, setAddingType,
   editingItem, setEditingItem,
   editingProfile, setEditingProfile,
+  editingSkills, setEditingSkills,
+  editSkillsInput, setEditSkillsInput,
+  savingSkills, handleSaveSkills, handleDeleteSkill,
   editName, setEditName, editHeadline, setEditHeadline,
   editPhone, setEditPhone, editLocation, setEditLocation,
   savingProfile, handleSaveProfile,
@@ -31,7 +34,7 @@ export default function MinimalLayout({
     return (
       <div key={type} className="minimal-section resume-section">
         {/* Thin rule */}
-        <div className="minimal-rule" />
+        <div className="minimal-rule" style={activeAccent ? { backgroundColor: activeAccent } : undefined} />
 
         {/* Section label */}
         <div className="flex items-center justify-between mb-4">
@@ -237,13 +240,56 @@ export default function MinimalLayout({
         {sections.map((type) => renderSection(type))}
 
         {/* Skills — comma-separated inline */}
-        {(targetProfile?.skills || []).length > 0 && (
-          <div className="minimal-section resume-section">
-            <div className="minimal-rule" />
-            <h3 className="minimal-section-label mb-3">Skills</h3>
-            <p className="text-xs text-gray-500 leading-relaxed">
-              {targetProfile.skills.join(',  ')}
-            </p>
+        {(isOwn || (targetProfile?.skills || []).length > 0) && (
+          <div className="minimal-section resume-section group">
+            <div className="minimal-rule" style={activeAccent ? { backgroundColor: activeAccent } : undefined} />
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="minimal-section-label">Skills</h3>
+              {isOwn && (
+                <button onClick={() => { setEditingSkills(true); setEditSkillsInput(''); }}
+                  className="p-1 rounded-full hover:bg-gray-100 transition-colors opacity-0 group-hover:opacity-100 no-print">
+                  <Plus className="w-3.5 h-3.5 text-gray-300" />
+                </button>
+              )}
+            </div>
+            
+            {editingSkills ? (
+               <div className="space-y-2 no-print">
+                 <input className="w-full border border-gray-200 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand/30"
+                   value={editSkillsInput} onChange={(e) => setEditSkillsInput(e.target.value)} placeholder="e.g. React, Node.js, Python (comma separated)" autoFocus onKeyDown={(e) => { if(e.key === 'Enter') handleSaveSkills(); }} />
+                 <div className="flex gap-2 pt-1">
+                   <button onClick={handleSaveSkills} disabled={savingSkills}
+                     className="flex items-center gap-1 px-3 py-1.5 rounded-md bg-brand text-white text-xs font-semibold hover:bg-brand-dark disabled:opacity-50">
+                     <Check className="w-3 h-3" /> Save
+                   </button>
+                   <button onClick={() => { setEditingSkills(false); setEditSkillsInput(''); }}
+                     className="flex items-center gap-1 px-3 py-1.5 rounded-md border border-gray-200 text-xs text-gray-500 hover:bg-gray-50">
+                     <X className="w-3 h-3" /> Cancel
+                   </button>
+                 </div>
+               </div>
+            ) : (
+              <>
+                {(targetProfile?.skills || []).length > 0 ? (
+                  <div className="flex flex-wrap gap-x-1">
+                    {(targetProfile?.skills || []).map((skill, i) => (
+                      <span key={skill} className="group/skill inline-flex items-center text-xs text-gray-500">
+                        {skill}{i < (targetProfile?.skills || []).length - 1 ? ',\u00A0' : ''}
+                        {isOwn && (
+                          <span className="inline-flex gap-0.5 opacity-0 group-hover/skill:opacity-100 transition-opacity no-print ml-0.5">
+                            <button onClick={() => handleDeleteSkill(skill)} className="p-0.5 rounded hover:bg-red-50">
+                              <Trash2 className="w-2 h-2 text-red-300" />
+                            </button>
+                          </span>
+                        )}
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs italic text-gray-300">No skills added yet.</p>
+                )}
+              </>
+            )}
           </div>
         )}
 
@@ -255,7 +301,7 @@ export default function MinimalLayout({
 
           return (
             <div className="minimal-section resume-section">
-              <div className="minimal-rule" />
+              <div className="minimal-rule" style={activeAccent ? { backgroundColor: activeAccent } : undefined} />
               <div className="flex items-center justify-between mb-3">
                 <h3 className="minimal-section-label">Hobbies</h3>
                 {isOwn && (

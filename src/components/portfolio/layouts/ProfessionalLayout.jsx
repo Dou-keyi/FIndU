@@ -8,11 +8,14 @@ import {
 } from './SharedComponents';
 
 export default function ProfessionalLayout({
-  targetProfile, user, isOwn, activeTemplate,
+  targetProfile, user, isOwn, activeTemplate, activeAccent, activeHeaderColor,
   portfolioItems, itemsByType,
   addingType, setAddingType,
   editingItem, setEditingItem,
   editingProfile, setEditingProfile,
+  editingSkills, setEditingSkills,
+  editSkillsInput, setEditSkillsInput,
+  savingSkills, handleSaveSkills, handleDeleteSkill,
   editName, setEditName, editHeadline, setEditHeadline,
   editPhone, setEditPhone, editLocation, setEditLocation,
   savingProfile, handleSaveProfile,
@@ -30,7 +33,7 @@ export default function ProfessionalLayout({
 
     return (
       <div key={type} className="mb-6 resume-section">
-        <ResumeSectionHeader type={type} isOwn={isOwn}
+        <ResumeSectionHeader type={type} isOwn={isOwn} accentColor={activeAccent}
           onAdd={() => { setAddingType(type); setEditingItem(null); }} />
 
         {items.map((item) => (
@@ -103,7 +106,10 @@ export default function ProfessionalLayout({
       {/* ════════════════════════════════
           LEFT SIDEBAR (Dark/Gradient)
          ════════════════════════════════ */}
-      <div className={`resume-sidebar bg-gradient-to-br ${activeTemplate.gradient} text-white p-6 md:p-8 flex flex-col`}>
+      <div 
+        className={`resume-sidebar text-white p-6 md:p-8 flex flex-col ${!activeHeaderColor ? `bg-gradient-to-br ${activeTemplate.gradient}` : ''}`}
+        style={activeHeaderColor ? { background: activeHeaderColor } : {}}
+      >
         {/* Avatar */}
         <div className="flex flex-col items-center mb-6">
           <div className="relative group mb-5">
@@ -111,12 +117,13 @@ export default function ProfessionalLayout({
               <img
                 src={targetProfile.avatar_url}
                 alt={targetProfile.full_name || 'Profile'}
-                className="w-32 h-32 rounded-full object-cover ring-4 ring-white/20 shadow-lg"
+                className="w-32 h-32 rounded-full object-cover shadow-lg"
+                style={{ boxShadow: `0 0 0 4px ${activeAccent || 'rgba(255,255,255,0.2)'}` }}
               />
             ) : (
               <div
-                className="w-32 h-32 rounded-full flex items-center justify-center text-4xl font-bold ring-4 ring-white/20 shadow-lg"
-                style={{ backgroundColor: avatarColor.bg, color: avatarColor.text }}
+                className="w-32 h-32 rounded-full flex items-center justify-center text-4xl font-bold shadow-lg"
+                style={{ backgroundColor: avatarColor.bg, color: avatarColor.text, boxShadow: `0 0 0 4px ${activeAccent || 'rgba(255,255,255,0.2)'}` }}
               >
                 {initials}
               </div>
@@ -226,16 +233,50 @@ export default function ProfessionalLayout({
         {LEFT_SECTIONS.map((type) => renderLeftSection(type))}
 
         {/* ── Skills (from profile) ── */}
-        {(targetProfile?.skills || []).length > 0 && (
-          <div className="mt-auto pt-4">
-            <div className="resume-section-header resume-section-header--dark">
+        {(isOwn || (targetProfile?.skills || []).length > 0) && (
+          <div className="mt-auto pt-4 resume-section group">
+            <div className="resume-section-header resume-section-header--dark flex items-center justify-between">
               <h3 className="text-sm font-extrabold uppercase tracking-widest text-white">Skills</h3>
+              {isOwn && (
+                <button onClick={() => { setEditingSkills(true); setEditSkillsInput(''); }} className="p-1 rounded-full hover:bg-white/10 text-white/40 hover:text-white transition-colors opacity-0 group-hover:opacity-100 no-print">
+                  <Plus className="w-3.5 h-3.5" />
+                </button>
+              )}
             </div>
-            <div className="resume-grid-items">
-              {targetProfile.skills.map((skill) => (
-                <span key={skill} className="text-xs text-white/80 py-0.5">{skill}</span>
-              ))}
-            </div>
+            {editingSkills ? (
+               <div className="space-y-2 mt-2 no-print">
+                 <input className="w-full bg-white/10 border border-white/20 rounded-md px-3 py-1.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-brand/50"
+                   value={editSkillsInput} onChange={(e) => setEditSkillsInput(e.target.value)} placeholder="e.g. React, Node.js (comma separated)" autoFocus onKeyDown={(e) => { if(e.key === 'Enter') handleSaveSkills(); }} />
+                 <div className="flex gap-2 pt-1">
+                   <button onClick={handleSaveSkills} disabled={savingSkills}
+                     className="flex items-center gap-1 px-3 py-1 rounded-md bg-brand text-white text-xs font-semibold hover:bg-brand-dark disabled:opacity-50">
+                     <Check className="w-3 h-3" /> Save
+                   </button>
+                   <button onClick={() => { setEditingSkills(false); setEditSkillsInput(''); }}
+                     className="flex items-center gap-1 px-3 py-1 rounded-md border border-white/20 text-xs text-white/60 hover:bg-white/10">
+                     <X className="w-3 h-3" /> Cancel
+                   </button>
+                 </div>
+               </div>
+            ) : (
+              <>
+                <div className="resume-grid-items">
+                  {(targetProfile?.skills || []).map((skill) => (
+                    <div key={skill} className="group/skill flex items-center justify-between py-0.5">
+                      <span className="text-xs text-white/80">{skill}</span>
+                      {isOwn && (
+                        <button onClick={() => handleDeleteSkill(skill)} className="p-0.5 rounded hover:bg-white/10 opacity-0 group-hover/skill:opacity-100 transition-opacity no-print">
+                          <Trash2 className="w-2.5 h-2.5 text-red-300" />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                {isOwn && (targetProfile?.skills || []).length === 0 && (
+                   <p className="text-xs italic text-white/25 mt-1">No skills added yet.</p>
+                )}
+              </>
+            )}
           </div>
         )}
       </div>
@@ -274,7 +315,7 @@ export default function ProfessionalLayout({
 
           return (
             <div className="mb-6 resume-section">
-              <ResumeSectionHeader type="hobby" isOwn={isOwn}
+              <ResumeSectionHeader type="hobby" isOwn={isOwn} accentColor={activeAccent}
                 onAdd={() => { setAddingType('hobby'); setEditingItem(null); }} />
 
               {hobbies.length > 0 && (
