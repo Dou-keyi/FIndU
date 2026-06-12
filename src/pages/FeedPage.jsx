@@ -15,6 +15,7 @@ import { useReducedMotion } from '../hooks/useReducedMotion';
 import { supabase } from '../lib/supabase';
 
 // --- Sub-components ---
+import FeedSearchBar from '../components/feed/FeedSearchBar';
 import FeedFilters from '../components/feed/FeedFilters';
 import NewPostsPill from '../components/feed/NewPostsPill';
 import PostCard from '../components/feed/post/PostCard';
@@ -62,6 +63,18 @@ export default function FeedPage() {
   const subFeedMode = useFeedStore((s) => s.subFeedMode);
   const activeFilters = useFeedStore((s) => s.activeFilters);
   const sortBy = useFeedStore((s) => s.sortBy);
+  const searchQuery = useFeedStore((s) => s.searchQuery);
+  const searchTags = useFeedStore((s) => s.searchTags);
+  const setSearchTags = useFeedStore((s) => s.setSearchTags);
+
+  // Debounce search query to prevent excessive fetches
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(searchQuery);
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
   const composerOpen = useFeedStore((s) => s.composerOpen);
   const setComposerOpen = useFeedStore((s) => s.setComposerOpen);
 
@@ -88,6 +101,13 @@ export default function FeedPage() {
   useFeedRealtime();
   useKeyboardShortcuts();
 
+  // Sync initial hashtag URL param
+  useEffect(() => {
+    if (hashtagFilter && searchTags.length === 0) {
+      setSearchTags([hashtagFilter.replace(/^#/, '').toLowerCase()]);
+    }
+  }, [hashtagFilter]);
+
   // Fetch posts logic
   const fetchPosts = useCallback(async (pageNum = 0, isAppend = false) => {
     if (!user) return;
@@ -109,9 +129,26 @@ export default function FeedPage() {
           )
         `);
 
-      // Apply Hashtag Filter
-      if (hashtagFilter) {
-        query = query.contains('hashtags', [hashtagFilter]);
+      // Apply Search Query & Tags
+      if (debouncedSearchQuery.trim()) {
+        const searchStr = debouncedSearchQuery.trim();
+        
+        // Find users matching the name
+        const { data: matchingUsers } = await supabase
+          .from('profiles')
+          .select('id')
+          .ilike('full_name', `%${searchStr}%`);
+          
+        const userIds = matchingUsers?.map(u => u.id) || [];
+        
+        if (userIds.length > 0) {
+          query = query.or(`content.ilike.%${searchStr}%,author_id.in.(${userIds.join(',')})`);
+        } else {
+          query = query.ilike('content', `%${searchStr}%`);
+        }
+      }
+      if (searchTags.length > 0) {
+        query = query.contains('hashtags', searchTags);
       }
 
       // Apply Sub-Feed Mode
@@ -187,7 +224,7 @@ export default function FeedPage() {
       setLoading(false);
       setLoadingMore(false);
     }
-  }, [user, hashtagFilter, subFeedMode, activeFilters, sortBy, appendPosts, setPosts]);
+  }, [user, subFeedMode, activeFilters, sortBy, debouncedSearchQuery, searchTags, appendPosts, setPosts]);
 
   // Initial fetch and dependency trigger
   useEffect(() => {
@@ -245,8 +282,9 @@ export default function FeedPage() {
           </h1>
         </div>
 
-        {/* Filters */}
-        <div className="sticky top-[105px] lg:top-20 z-30 bg-white/95 backdrop-blur-md border-b border-gray-100 pb-2 pt-2 lg:pt-0 -mx-4 px-4 lg:mx-0 lg:px-0 lg:border-none lg:bg-transparent">
+        {/* Filters & Search */}
+        <div className="sticky top-[105px] lg:top-20 z-30 bg-white/95 backdrop-blur-md border-b border-gray-100 pb-2 pt-2 lg:pt-0 -mx-4 px-4 lg:mx-0 lg:px-0 lg:border-none lg:bg-transparent flex flex-col gap-2">
+          <FeedSearchBar />
           <FeedFilters />
         </div>
 

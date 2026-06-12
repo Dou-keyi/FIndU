@@ -8,6 +8,8 @@ import { toast } from '../components/ui/use-toast';
 import RequestsList from '../components/messaging/RequestsList';
 import ThreadList from '../components/messaging/ThreadList';
 import ChatThread from '../components/messaging/ChatThread';
+import NewMessageSheet from '../components/messaging/NewMessageSheet';
+import { MessageSquarePlus } from 'lucide-react';
 
 export default function MessagingPage() {
   const { user, profile } = useAuth();
@@ -17,6 +19,7 @@ export default function MessagingPage() {
   const [activeTab, setActiveTab] = useState('chats'); // 'requests' | 'chats'
   const [view, setView] = useState('list'); // 'list' | 'thread'
   const [activeThreadId, setActiveThreadId] = useState(null);
+  const [isNewMessageOpen, setIsNewMessageOpen] = useState(false);
 
   const [threads, setThreads] = useState([]);
   const [requests, setRequests] = useState([]);
@@ -101,9 +104,9 @@ export default function MessagingPage() {
 
   const handleAcceptRequest = async (req) => {
     const matchData = {
-      candidate_id: role === 'candidate' ? user.id : req.sender_id,
-      job_id: req.job_id,
-      employer_id: role === 'employer' ? user.id : req.sender_id,
+      candidate_id: req.job_id ? (role === 'candidate' ? user.id : req.sender_id) : req.sender_id,
+      job_id: req.job_id || null,
+      employer_id: req.job_id ? (role === 'employer' ? user.id : req.sender_id) : user.id,
     };
     
     const { error } = await respondToRequest(req.id, 'accepted', matchData);
@@ -146,7 +149,16 @@ export default function MessagingPage() {
       <div className="flex-1 flex flex-col w-full h-full">
         {/* Header / Tabs */}
         <div className="bg-white border-b border-slate-200 px-4 pt-12 md:pt-6 pb-0 flex-shrink-0 z-10 sticky top-0">
-          <h1 className="text-xl font-bold text-slate-900 mb-4 px-2">Messages</h1>
+          <div className="flex items-center justify-between mb-4 px-2">
+            <h1 className="text-xl font-bold text-slate-900">Messages</h1>
+            <button
+              onClick={() => setIsNewMessageOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-brand text-white text-sm font-semibold rounded-lg hover:bg-brand-dark transition-colors shadow-sm"
+            >
+              <MessageSquarePlus className="w-4 h-4" />
+              <span className="hidden sm:inline">New Message</span>
+            </button>
+          </div>
           <div className="flex gap-6 px-2">
             <button
               onClick={() => setActiveTab('requests')}
@@ -253,6 +265,11 @@ export default function MessagingPage() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <NewMessageSheet 
+        isOpen={isNewMessageOpen} 
+        onClose={() => setIsNewMessageOpen(false)} 
+      />
     </div>
   );
 }

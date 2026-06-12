@@ -101,7 +101,7 @@ export default function RequestsList({ requests, onAccept, onDecline, loading })
                         className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold text-red-500 border border-red-200 bg-red-50 hover:bg-red-100 transition-colors"
                       >
                         <X className="w-3.5 h-3.5" />
-                        Decline
+                        Delete
                       </button>
                     </div>
                   </div>

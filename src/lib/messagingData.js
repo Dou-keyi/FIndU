@@ -98,6 +98,21 @@ export async function getMySentRequests(userId) {
   return data || [];
 }
 
+export async function createMessageRequest(senderId, recipientId, introMessage) {
+  const { data, error } = await supabase
+    .from('message_requests')
+    .insert({
+      sender_id: senderId,
+      recipient_id: recipientId,
+      intro_message: introMessage,
+      status: 'pending'
+    })
+    .select()
+    .single();
+    
+  return { data, error };
+}
+
 export async function respondToRequest(requestId, status, matchData) {
   const { error: updateError } = await supabase
     .from('message_requests')

@@ -48,6 +48,20 @@ export const useFeedStore = create((set, get) => ({
     })),
   setSortBy: (sort) => set({ sortBy: sort }),
 
+  // ─── Search Bar ──────────────────────────────
+  searchQuery: '',
+  searchTags: [],
+  setSearchQuery: (query) => set({ searchQuery: query }),
+  setSearchTags: (tags) => set({ searchTags: tags }),
+  addSearchTag: (tag) => set((s) => {
+    const cleanTag = tag.replace(/^#/, '').toLowerCase();
+    if (s.searchTags.includes(cleanTag)) return s;
+    return { searchTags: [...s.searchTags, cleanTag] };
+  }),
+  removeSearchTag: (tag) => set((s) => ({
+    searchTags: s.searchTags.filter(t => t !== tag)
+  })),
+
   // ─── Focused Post (keyboard nav) ─────────────
   focusedIndex: -1,
   setFocusedIndex: (i) => set({ focusedIndex: i }),
