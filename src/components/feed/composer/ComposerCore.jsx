@@ -24,6 +24,7 @@ export default function ComposerCore({
   onPostCreated,
   onClose,
   compact = false,
+  expanded = false,
   className = '',
 }) {
   const { user, profile } = useAuth();
@@ -335,14 +336,16 @@ export default function ComposerCore({
       </div>
 
       {/* Textarea with mention dropdown */}
-      <div className="relative">
+      <div className={`relative ${expanded ? 'flex-1 flex flex-col' : ''}`}>
         <textarea
           ref={textareaRef}
-          className="w-full resize-none text-sm text-gray-800 placeholder-gray-400 focus:outline-none leading-relaxed"
-          placeholder="Share an update, milestone, or question…"
+          className={`w-full resize-none text-gray-800 placeholder-gray-400 focus:outline-none leading-relaxed ${
+            expanded ? 'text-lg lg:text-xl font-medium flex-1' : 'text-sm'
+          }`}
+          placeholder={expanded ? "What do you want to talk about?" : "Share an update, milestone, or question…"}
           value={content}
           onChange={handleContentChange}
-          style={{ minHeight: compact ? '48px' : '80px' }}
+          style={{ minHeight: expanded ? '250px' : compact ? '48px' : '80px' }}
           onKeyDown={(e) => {
             if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
               e.preventDefault();
@@ -431,7 +434,7 @@ export default function ComposerCore({
       )}
 
       {/* Toolbar + Submit */}
-      <div className="flex items-center justify-between pt-3 border-t border-gray-50">
+      <div className={`flex items-center justify-between pt-3 border-t border-gray-50 ${expanded ? 'mt-auto' : ''}`}>
         <div className="flex items-center gap-0.5">
           {/* Image upload */}
           <label className="p-2 rounded-lg text-gray-400 hover:text-violet-600 hover:bg-violet-50 transition-colors cursor-pointer">

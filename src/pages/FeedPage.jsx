@@ -15,8 +15,6 @@ import { useReducedMotion } from '../hooks/useReducedMotion';
 import { supabase } from '../lib/supabase';
 
 // --- Sub-components ---
-import InlineComposer from '../components/feed/composer/InlineComposer';
-import PostComposerSheet from '../components/feed/composer/PostComposerSheet';
 import FeedFilters from '../components/feed/FeedFilters';
 import NewPostsPill from '../components/feed/NewPostsPill';
 import PostCard from '../components/feed/post/PostCard';
@@ -236,8 +234,7 @@ export default function FeedPage() {
           <FeedFilters />
         </div>
 
-        {/* Desktop Inline Composer */}
-        <InlineComposer onPostCreated={(post) => pushNewPost(post)} />
+        {/* Desktop Inline Composer has been moved to /create-post */}
 
         {/* New Posts Notification Pill */}
         <NewPostsPill />
@@ -323,7 +320,7 @@ export default function FeedPage() {
 
       {/* ─── MOBILE FAB ─── */}
       <button
-        onClick={() => setComposerOpen(true)}
+        onClick={() => window.location.href = '/create-post'}
         className="lg:hidden fixed bottom-[72px] right-4 z-40 w-14 h-14 bg-brand text-white rounded-full shadow-xl flex items-center justify-center hover:bg-brand-dark transition-all active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
         aria-label="Create Post"
       >
@@ -331,13 +328,6 @@ export default function FeedPage() {
       </button>
 
       {/* ─── GLOBALLY MOUNTED SHEETS / MODALS ─── */}
-      
-      {/* Mobile Composer */}
-      <PostComposerSheet 
-        isOpen={composerOpen} 
-        onClose={() => setComposerOpen(false)} 
-        onPostCreated={(post) => pushNewPost(post)} 
-      />
 
       {/* DM Panel */}
       <DMPanel />

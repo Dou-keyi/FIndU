@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LogOut, User } from 'lucide-react';
+import { LogOut, User, PlusCircle } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { supabase } from '../../lib/supabase';
 import { getInitials, getAvatarColor } from '../../lib/avatarUtils';
@@ -64,6 +64,16 @@ export default function MobileHeader() {
               >
                 <User className="w-4 h-4" aria-hidden="true" />
                 View Profile
+              </button>
+              <button
+                onClick={() => {
+                  setMenuOpen(false);
+                  navigate('/create-post');
+                }}
+                className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-violet-600 hover:bg-violet-50 transition-colors focus-visible:outline-none font-medium"
+              >
+                <PlusCircle className="w-4 h-4" aria-hidden="true" />
+                Create Post
               </button>
               <button
                 onClick={handleLogoutClick}

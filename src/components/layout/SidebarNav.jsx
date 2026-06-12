@@ -1,7 +1,7 @@
 // SidebarNav.jsx — Desktop navigation sidebar (md:flex)
 import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Globe2, Newspaper, FileText, MessageSquare, Clock, LogOut } from 'lucide-react';
+import { Globe2, Newspaper, FileText, MessageSquare, Clock, LogOut, PlusCircle } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { supabase } from '../../lib/supabase';
 import { getInitials, getAvatarColor } from '../../lib/avatarUtils';
@@ -13,6 +13,7 @@ const NAV_ITEMS = [
   { path: '/portfolio', icon: FileText, label: 'Portfolio' },
   { path: '/messaging', icon: MessageSquare, label: 'Messages' },
   { path: '/tracking', icon: Clock, label: 'Track' },
+  { path: '/create-post', icon: PlusCircle, label: 'Create Post' },
 ];
 
 export default function SidebarNav() {
@@ -116,3 +117,4 @@ export default function SidebarNav() {
     </>
   );
 }
+
