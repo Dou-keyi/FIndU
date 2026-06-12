@@ -1,17 +1,24 @@
-// PortfolioPage.jsx — living portfolio with CRUD, AI suggestions, and employer read-only view
-import React, { useState, useEffect, useCallback } from 'react';
+// PortfolioPage.jsx — Resume-style portfolio with multiple layout templates and PDF export
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Plus, Loader2, Sparkles } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import {
+  Loader2, Trash2, Download, Upload, ChevronLeft, Palette, Sparkles, CheckCircle2
+} from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { usePortfolioSuggestion } from '../context/PortfolioSuggestionContext';
 import { supabase } from '../lib/supabase';
-import PortfolioHeader from '../components/portfolio/PortfolioHeader';
-import PortfolioItemCard from '../components/portfolio/PortfolioItemCard';
-import PortfolioItemForm from '../components/portfolio/PortfolioItemForm';
+import { getInitials, getAvatarColor } from '../lib/avatarUtils';
 import AISuggestionBanner from '../components/portfolio/AISuggestionBanner';
+import ImportResumeModal from '../components/portfolio/ImportResumeModal';
 import MessageRequestSheet from '../components/messaging/MessageRequestSheet';
+import ProfessionalLayout from '../components/portfolio/layouts/ProfessionalLayout';
+import CreativeLayout from '../components/portfolio/layouts/CreativeLayout';
+import MinimalLayout from '../components/portfolio/layouts/MinimalLayout';
 
+
+/* ═══════════════════════════════════════════════════════
+   Main PortfolioPage Component
+   ═══════════════════════════════════════════════════════ */
 export default function PortfolioPage() {
   const { candidateId } = useParams();
   const navigate = useNavigate();
@@ -20,419 +27,544 @@ export default function PortfolioPage() {
 
   const [targetProfile, setTargetProfile] = useState(null);
   const [portfolioItems, setPortfolioItems] = useState([]);
+  const [templates, setTemplates] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [showForm, setShowForm] = useState(false);
+
+  // Template Switcher state
+  const [showTemplateSwitcher, setShowTemplateSwitcher] = useState(false);
+  const [changingTemplate, setChangingTemplate] = useState(false);
+
+  // Inline editing state
+  const [addingType, setAddingType] = useState(null);
   const [editingItem, setEditingItem] = useState(null);
   
   // Prompt state
   const [feedPromptItem, setFeedPromptItem] = useState(null);
   const [sharingToFeed, setSharingToFeed] = useState(false);
-  
+
+  // Profile inline editing
+  const [editingProfile, setEditingProfile] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editHeadline, setEditHeadline] = useState('');
+  const [editPhone, setEditPhone] = useState('');
+  const [editLocation, setEditLocation] = useState('');
+  const [savingProfile, setSavingProfile] = useState(false);
+
+  // Avatar upload
+  const avatarInputRef = useRef(null);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+
+  // Import resume state
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [deletingAll, setDeletingAll] = useState(false);
+
   // Message request state
   const [employerJob, setEmployerJob] = useState(null);
   const [showRequestSheet, setShowRequestSheet] = useState(false);
 
-  // Determine if viewing own portfolio
   const isOwn = !candidateId || candidateId === user?.id;
   const targetId = isOwn ? user?.id : candidateId;
 
-  // Employer redirect: if employer with no candidateId, redirect to company page
+  // Employer redirect
   useEffect(() => {
     if (!loading && profile?.role === 'employer' && isOwn) {
-      // Find employer's company
-      supabase
-        .from('companies')
-        .select('id')
-        .eq('owner_id', user.id)
-        .limit(1)
-        .then(({ data }) => {
-          if (data?.[0]?.id) {
-            navigate(`/company/${data[0].id}`, { replace: true });
-          }
-        });
+      supabase.from('companies').select('id').eq('owner_id', user.id).limit(1)
+        .then(({ data }) => { if (data?.[0]?.id) navigate(`/company/${data[0].id}`, { replace: true }); });
     }
   }, [profile, isOwn, loading, user, navigate]);
 
-  // Load profile and portfolio items
+  // Load data
   const loadData = useCallback(async () => {
     if (!targetId) return;
     setLoading(true);
     try {
-      // Fetch target profile
       const { data: profData, error: profErr } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', targetId)
-        .single();
-
+        .from('profiles').select('*').eq('id', targetId).single();
       if (profErr) throw profErr;
       setTargetProfile(profData);
 
-      // Fetch portfolio items
       const { data: items, error: itemsErr } = await supabase
-        .from('portfolio_items')
-        .select('*')
-        .eq('candidate_id', targetId)
-        .order('created_at', { ascending: false });
-
+        .from('portfolio_items').select('*').eq('candidate_id', targetId)
+        .order('created_at', { ascending: true });
       if (itemsErr) throw itemsErr;
       setPortfolioItems(items || []);
 
-      // If employer viewing candidate, get employer's active job for context
+      const { data: tmplData } = await supabase
+        .from('resume_templates')
+        .select('*')
+        .or(`candidate_id.is.null,candidate_id.eq.${targetId}`);
+      setTemplates(tmplData || []);
+
       if (!isOwn && profile?.role === 'employer') {
         const { data: jobData } = await supabase
-          .from('jobs')
-          .select('id, title')
-          .eq('posted_by', user.id)
-          .eq('status', 'open')
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .single();
+          .from('jobs').select('id, title').eq('posted_by', user.id)
+          .eq('status', 'open').order('created_at', { ascending: false }).limit(1).single();
         if (jobData) setEmployerJob(jobData);
       }
-    } catch (err) {
-      console.error('Failed to load portfolio:', err);
-    } finally {
-      setLoading(false);
-    }
+    } catch (err) { console.error('Failed to load portfolio:', err); }
+    finally { setLoading(false); }
   }, [targetId]);
 
+  useEffect(() => { loadData(); }, [loadData]);
+
+  // Sync edit fields when profile loads
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    if (targetProfile) {
+      setEditName(targetProfile.full_name || '');
+      setEditHeadline(targetProfile.headline || '');
+      setEditPhone(targetProfile.phone || '');
+      setEditLocation(targetProfile.location || '');
+    }
+  }, [targetProfile]);
 
-  // Handle profile inline edit
-  const handleProfileUpdate = (updatedProfile) => {
-    setTargetProfile(updatedProfile);
-  };
-
-  // Save portfolio item (create or update)
+  /* ─── CRUD handlers ─── */
   const handleSaveItem = async (itemData) => {
     if (!user) return;
     try {
       if (itemData.id) {
-        // Update existing
-        const { error } = await supabase
-          .from('portfolio_items')
-          .update({
-            item_type: itemData.item_type,
-            title: itemData.title,
-            description: itemData.description,
-            tags: itemData.tags,
-          })
+        const { error } = await supabase.from('portfolio_items')
+          .update({ item_type: itemData.item_type, title: itemData.title, description: itemData.description, tags: itemData.tags })
           .eq('id', itemData.id);
-
         if (error) throw error;
-        setPortfolioItems((prev) =>
-          prev.map((i) => (i.id === itemData.id ? { ...i, ...itemData } : i))
-        );
+        setPortfolioItems((prev) => prev.map((i) => (i.id === itemData.id ? { ...i, ...itemData } : i)));
       } else {
-        // Create new
-        const { data, error } = await supabase
-          .from('portfolio_items')
-          .insert({
-            candidate_id: user.id,
-            item_type: itemData.item_type,
-            title: itemData.title,
-            description: itemData.description,
-            tags: itemData.tags,
-            source: 'manual',
-          })
-          .select()
-          .single();
-
+        const { data, error } = await supabase.from('portfolio_items')
+          .insert({ candidate_id: user.id, item_type: itemData.item_type, title: itemData.title, description: itemData.description, tags: itemData.tags, source: 'manual' })
+          .select().single();
         if (error) throw error;
         setPortfolioItems((prev) => [data, ...prev]);
         setFeedPromptItem(data);
       }
-
-      setShowForm(false);
+      setAddingType(null);
       setEditingItem(null);
-    } catch (err) {
-      console.error('Failed to save portfolio item:', err);
-    }
+    } catch (err) { console.error('Save failed:', err); }
   };
 
-  // Delete portfolio item
   const handleDeleteItem = async (item) => {
     try {
-      const { error } = await supabase
-        .from('portfolio_items')
-        .delete()
-        .eq('id', item.id);
-
+      const { error } = await supabase.from('portfolio_items').delete().eq('id', item.id);
       if (error) throw error;
       setPortfolioItems((prev) => prev.filter((i) => i.id !== item.id));
-    } catch (err) {
-      console.error('Failed to delete portfolio item:', err);
-    }
+    } catch (err) { console.error('Delete failed:', err); }
   };
 
-  // Accept AI suggestion
   const handleAcceptSuggestion = async (sugg) => {
     if (!user) return;
     try {
-      const { data, error } = await supabase
-        .from('portfolio_items')
-        .insert({
-          candidate_id: user.id,
-          item_type: sugg.item_type,
-          title: sugg.title,
-          description: sugg.description,
-          tags: sugg.tags || [],
-          source: 'ai_suggestion',
-        })
-        .select()
-        .single();
-
+      const { data, error } = await supabase.from('portfolio_items')
+        .insert({ candidate_id: user.id, item_type: sugg.item_type, title: sugg.title, description: sugg.description, tags: sugg.tags || [], source: 'ai_suggestion' })
+        .select().single();
       if (error) throw error;
-      setPortfolioItems((prev) => [data, ...prev]);
+      setPortfolioItems((prev) => [...prev, data]);
       clearSuggestion();
-    } catch (err) {
-      console.error('Failed to accept AI suggestion:', err);
-    }
+    } catch (err) { console.error('Accept suggestion failed:', err); }
   };
 
-  // Edit item
-  const handleEdit = (item) => {
-    setEditingItem(item);
-    setShowForm(true);
+  const handleSaveProfile = async () => {
+    setSavingProfile(true);
+    try {
+      const { error } = await supabase.from('profiles')
+        .update({ full_name: editName.trim(), headline: editHeadline.trim(), phone: editPhone.trim(), location: editLocation.trim() })
+        .eq('id', targetProfile.id);
+      if (!error) {
+        setTargetProfile((p) => ({ ...p, full_name: editName.trim(), headline: editHeadline.trim(), phone: editPhone.trim(), location: editLocation.trim() }));
+        setEditingProfile(false);
+      }
+    } catch (err) { console.error('Profile update failed:', err); }
+    finally { setSavingProfile(false); }
   };
 
-  // Handle messaging a candidate
+  // Message handler
   const handleMessageClick = async () => {
-    // 1. Check if there's an existing match
     try {
       const { data: matchData } = await supabase
-        .from('matches')
-        .select('message_threads(id)')
-        .eq('candidate_id', targetId)
-        .eq('employer_id', user.id)
-        .limit(1)
-        .single();
-        
+        .from('matches').select('message_threads(id)')
+        .eq('candidate_id', targetId).eq('employer_id', user.id).limit(1).single();
       if (matchData?.message_threads?.[0]?.id) {
-        // We have a match + thread, go straight there
         navigate('/messaging', { state: { openThreadId: matchData.message_threads[0].id } });
-      } else {
-        // No match, open request sheet
-        setShowRequestSheet(true);
+      } else { setShowRequestSheet(true); }
+    } catch { setShowRequestSheet(true); }
+  };
+
+  /* ─── Resume import handler ─── */
+  const handleResumeImport = async (parsedData) => {
+    if (!user) return;
+    try {
+      // Bulk insert all parsed section items
+      const itemsToInsert = [];
+      for (const [type, items] of Object.entries(parsedData.sections || {})) {
+        for (const item of items || []) {
+          if (!item.title) continue;
+          itemsToInsert.push({
+            candidate_id: user.id,
+            item_type: type,
+            title: item.title,
+            description: item.description || null,
+            tags: item.tags || [],
+            source: 'import',
+          });
+        }
       }
-    } catch (e) {
-      // On error or no data, open request sheet
-      setShowRequestSheet(true);
+
+      if (itemsToInsert.length > 0) {
+        const { data: inserted, error } = await supabase
+          .from('portfolio_items')
+          .insert(itemsToInsert)
+          .select();
+        if (error) throw error;
+        setPortfolioItems((prev) => [...prev, ...(inserted || [])]);
+      }
+
+      // Update profile fields if detected
+      const profileUpdates = {};
+      if (parsedData.profile?.full_name && !targetProfile?.full_name) {
+        profileUpdates.full_name = parsedData.profile.full_name;
+      }
+      if (parsedData.profile?.headline && !targetProfile?.headline) {
+        profileUpdates.headline = parsedData.profile.headline;
+      }
+      if (parsedData.profile?.phone && !targetProfile?.phone) {
+        profileUpdates.phone = parsedData.profile.phone;
+      }
+      if (parsedData.profile?.location && !targetProfile?.location) {
+        profileUpdates.location = parsedData.profile.location;
+      }
+
+      // Merge skills (union of existing + imported)
+      if (parsedData.skills?.length > 0) {
+        const existingSkills = targetProfile?.skills || [];
+        const merged = [...new Set([...existingSkills, ...parsedData.skills])];
+        profileUpdates.skills = merged;
+      }
+
+      // Save scanned template if detected
+      if (parsedData.scannedTemplate) {
+        const t = parsedData.scannedTemplate;
+        const { error: tmplError } = await supabase
+          .from('resume_templates')
+          .insert({
+            id: t.id,
+            name: t.name || 'Scanned Template',
+            description: t.description || 'Custom template from upload',
+            gradient: t.gradient || 'from-gray-800 to-gray-600',
+            accent: t.accent || '#4b5563',
+            custom_css: t.custom_css || null,
+            icon: t.icon || 'Layout',
+            candidate_id: user.id
+          });
+
+        if (!tmplError) {
+          // Set this template as active and add it to local state
+          profileUpdates.resume_template = t.id;
+          setTemplates(prev => [...prev, {
+            id: t.id,
+            name: t.name || 'Scanned Template',
+            description: t.description || 'Custom template from upload',
+            gradient: t.gradient || 'from-gray-800 to-gray-600',
+            accent: t.accent || '#4b5563',
+            custom_css: t.custom_css || null,
+            icon: t.icon || 'Layout',
+            candidate_id: user.id
+          }]);
+        } else {
+          console.warn('Failed to save scanned template:', tmplError);
+        }
+      }
+
+      if (Object.keys(profileUpdates).length > 0) {
+        const { error: profErr } = await supabase
+          .from('profiles')
+          .update(profileUpdates)
+          .eq('id', user.id);
+        if (!profErr) {
+          setTargetProfile((p) => ({ ...p, ...profileUpdates }));
+        }
+      }
+    } catch (err) {
+      console.error('Resume import failed:', err);
     }
   };
 
+  /* ─── Helpers ─── */
+  const itemsByType = (type) => portfolioItems.filter((i) => i.item_type === type);
+  const initials = getInitials(targetProfile?.full_name);
+  const avatarColor = getAvatarColor(targetProfile?.full_name);
+
+  const handleExportPDF = () => { window.print(); };
+
+  const handleChangeTemplate = async (templateId) => {
+    setChangingTemplate(true);
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ resume_template: templateId })
+        .eq('id', user.id);
+      if (error) throw error;
+      setTargetProfile(p => ({ ...p, resume_template: templateId }));
+      setShowTemplateSwitcher(false);
+    } catch (err) {
+      console.error('Template change failed:', err);
+    } finally {
+      setChangingTemplate(false);
+    }
+  };
+
+  /* ─── Delete all portfolio data ─── */
+  const handleDeleteAll = async () => {
+    const confirmed = window.confirm(
+      'Are you sure you want to clear ALL your portfolio information?\n\nThis will delete all resume sections, profile details (name, headline, phone, location), skills, and your avatar. This action cannot be undone.'
+    );
+    if (!confirmed || !user) return;
+
+    setDeletingAll(true);
+    try {
+      // Delete all portfolio items
+      const { error: itemsErr } = await supabase
+        .from('portfolio_items')
+        .delete()
+        .eq('candidate_id', user.id);
+      if (itemsErr) throw itemsErr;
+
+      // Reset profile fields
+      const resetFields = {
+        full_name: null,
+        headline: null,
+        phone: null,
+        location: null,
+        skills: [],
+        avatar_url: null,
+      };
+      const { error: profErr } = await supabase
+        .from('profiles')
+        .update(resetFields)
+        .eq('id', user.id);
+      if (profErr) throw profErr;
+
+      // Update local state
+      setPortfolioItems([]);
+      setTargetProfile((p) => ({ ...p, ...resetFields }));
+      setEditName('');
+      setEditHeadline('');
+      setEditPhone('');
+      setEditLocation('');
+      setEditingProfile(false);
+      setAddingType(null);
+      setEditingItem(null);
+    } catch (err) {
+      console.error('Delete all failed:', err);
+    } finally {
+      setDeletingAll(false);
+    }
+  };
+
+  /* ─── Avatar upload handler ─── */
+  const handleAvatarUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+
+    // Validate file
+    if (!file.type.startsWith('image/')) return;
+    if (file.size > 5 * 1024 * 1024) {
+      console.error('Image too large — max 5MB');
+      return;
+    }
+
+    setUploadingAvatar(true);
+    try {
+      const ext = file.name.split('.').pop();
+      const filePath = `${user.id}/avatar.${ext}`;
+
+      // Upload to Supabase Storage
+      const { error: uploadErr } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, file, { upsert: true });
+      if (uploadErr) throw uploadErr;
+
+      // Get public URL
+      const { data: urlData } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(filePath);
+
+      const publicUrl = urlData.publicUrl + '?t=' + Date.now();
+
+      // Update profile
+      const { error: profErr } = await supabase
+        .from('profiles')
+        .update({ avatar_url: publicUrl })
+        .eq('id', user.id);
+      if (profErr) throw profErr;
+
+      setTargetProfile((p) => ({ ...p, avatar_url: publicUrl }));
+    } catch (err) {
+      console.error('Avatar upload failed:', err);
+    } finally {
+      setUploadingAvatar(false);
+      // Reset input so same file can be re-uploaded
+      if (avatarInputRef.current) avatarInputRef.current.value = '';
+    }
+  };
+
+
+  /* ─── Loading state ─── */
   if (loading) {
     return (
-      <div className="min-h-screen min-h-[100dvh] bg-gray-50 flex flex-col">
-        <div className="flex-1 flex items-center justify-center">
-          <div className="spinner" />
-        </div>
+      <div className="min-h-screen min-h-[100dvh] bg-gray-50 flex items-center justify-center">
+        <div className="spinner" />
       </div>
     );
   }
 
+  /* ═══════════════════════════════════════════
+     RENDER
+     ═══════════════════════════════════════════ */
+  const activeTemplate = templates.find(t => t.id === targetProfile?.resume_template) || templates.find(t => t.id === 'professional') || {
+    gradient: 'from-slate-800 to-slate-600',
+    accent: '#3b82f6'
+  };
+
   return (
-    <div className="min-h-screen min-h-[100dvh] bg-gray-50 flex flex-col">
-      {/* Top bar (Desktop Context) */}
-      <header className="hidden md:block bg-white border-b border-gray-100 px-4 py-3 z-20 sticky top-0">
-        <div className="max-w-3xl mx-auto flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-gray-900">
-            {isOwn ? 'My Portfolio' : `${targetProfile?.full_name || 'Candidate'}'s Portfolio`}
-          </h2>
-          {!isOwn && profile?.role === 'employer' && (
-            <button
-              onClick={handleMessageClick}
-              className="px-4 py-1.5 bg-brand text-white text-sm font-semibold rounded-lg hover:bg-brand-dark transition-colors shadow-sm"
-            >
-              Message Candidate
+    <div className="min-h-screen min-h-[100dvh] bg-gray-100 flex flex-col">
+      {activeTemplate.custom_css && (
+        <style dangerouslySetInnerHTML={{ __html: activeTemplate.custom_css }} />
+      )}
+      {/* ── Action bar (hidden in print) ── */}
+      <div className="resume-actions sticky top-0 z-30 bg-white/80 backdrop-blur border-b border-gray-200 no-print">
+        <div className="resume-page flex items-center justify-between px-4 py-2.5">
+          <div className="flex items-center gap-3">
+            <button onClick={() => navigate(-1)} className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors">
+              <ChevronLeft className="w-5 h-5 text-gray-500" />
             </button>
-          )}
-        </div>
-      </header>
-
-      {/* Main content */}
-      <main className="flex-1">
-        <div className="max-w-3xl mx-auto px-4 py-6 md:py-8">
-          
-          {/* Top Section: Profile */}
-          <div className="space-y-6">
-            {/* AI Suggestion Banner — own portfolio only */}
-            {isOwn && suggestion?.suggest && (
-              <AISuggestionBanner
-                suggestion={suggestion}
-                onAccept={handleAcceptSuggestion}
-                onDismiss={clearSuggestion}
-              />
-            )}
-
-            {/* Profile header */}
-            <motion.div
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3 }}
-            >
-              <PortfolioHeader
-                profile={targetProfile}
-                isOwn={isOwn}
-                onProfileUpdate={handleProfileUpdate}
-              />
-              
-              {/* Mobile Message Button */}
-              {!isOwn && profile?.role === 'employer' && (
-                <div className="md:hidden mt-4">
-                  <button
-                    onClick={handleMessageClick}
-                    className="w-full py-3 bg-brand text-white text-sm font-semibold rounded-xl hover:bg-brand-dark transition-colors shadow-md"
-                  >
-                    Message Candidate
-                  </button>
-                </div>
-              )}
-            </motion.div>
+            <h2 className="text-sm font-semibold text-gray-800">
+              {isOwn ? 'My Resume' : `${targetProfile?.full_name || 'Candidate'}'s Resume`}
+            </h2>
           </div>
-
-          {/* Divider */}
-          <div className="my-6 border-t border-gray-200" />
-
-          {/* Bottom Section: Portfolio Items */}
-          <div className="flex-1">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-semibold text-gray-800">Experience & Work</h3>
-              {isOwn && !showForm && (
-                <button
-                  onClick={() => {
-                    setEditingItem(null);
-                    setShowForm(true);
-                  }}
-                  className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold text-brand hover:bg-brand-50 transition-colors"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  Add item
-                </button>
-              )}
-            </div>
-
-            {/* Inline form */}
-            {showForm && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
-                className="mb-4"
-              >
-                <PortfolioItemForm
-                  initialData={editingItem}
-                  onSave={handleSaveItem}
-                  onCancel={() => {
-                    setShowForm(false);
-                    setEditingItem(null);
-                  }}
-                />
-              </motion.div>
+          <div className="flex items-center gap-2">
+            {isOwn && (
+              <button onClick={handleDeleteAll} disabled={deletingAll}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-lg border border-red-200 text-red-600 text-xs font-semibold hover:bg-red-50 transition-colors disabled:opacity-50">
+                {deletingAll ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                Clear All
+              </button>
             )}
-
-            {/* Items list */}
-            <div className="space-y-3">
-              {portfolioItems.length === 0 ? (
-                <p className="text-center text-sm text-gray-400 py-8">
-                  {isOwn ? 'No portfolio items yet. Add your first one!' : 'No portfolio items to show.'}
-                </p>
-              ) : (
-                portfolioItems.map((item, i) => (
-                  <motion.div
-                    key={item.id}
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: i * 0.05 }}
-                  >
-                    <PortfolioItemCard
-                      item={item}
-                      isOwn={isOwn}
-                      onEdit={handleEdit}
-                      onDelete={handleDeleteItem}
-                    />
-                  </motion.div>
-                ))
-              )}
-            </div>
-
-            {/* Add item button at bottom — own portfolio */}
-            {isOwn && !showForm && portfolioItems.length > 0 && (
-              <button
-                onClick={() => {
-                  setEditingItem(null);
-                  setShowForm(true);
-                }}
-                className="w-full mt-4 py-3 rounded-xl border-2 border-dashed border-gray-200 text-sm font-medium text-gray-400 hover:border-brand-300 hover:text-brand transition-colors flex items-center justify-center gap-1.5"
-              >
-                <Plus className="w-4 h-4" />
-                Add another item
+            {isOwn && (
+              <div className="relative">
+                <button onClick={() => setShowTemplateSwitcher(!showTemplateSwitcher)}
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-lg border border-gray-200 text-gray-700 text-xs font-semibold hover:bg-gray-50 transition-colors">
+                  <Palette className="w-3.5 h-3.5" />
+                  Template
+                </button>
+                {showTemplateSwitcher && (
+                  <div className="absolute right-0 top-full mt-2 w-72 bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden z-50 p-2 text-left">
+                    <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2 px-2 pt-2">Choose Template</h3>
+                    <div className="space-y-1">
+                      {templates.map(t => {
+                        const isScanned = !!t.candidate_id;
+                        const isActive = activeTemplate.id === t.id;
+                        return (
+                          <button key={t.id} onClick={() => handleChangeTemplate(t.id)} disabled={changingTemplate}
+                            className={`w-full flex items-center justify-between p-2.5 rounded-lg transition-colors text-left disabled:opacity-50 ${
+                              isActive ? 'bg-brand-50 ring-1 ring-brand/20' : 'hover:bg-gray-50'
+                            }`}>
+                            <div className="flex items-center gap-2.5">
+                              <div className={`w-7 h-7 rounded-md bg-gradient-to-br ${t.gradient} flex items-center justify-center shrink-0`}>
+                                {isScanned && (
+                                  <Sparkles className="w-3 h-3 text-white/80" />
+                                )}
+                              </div>
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-1.5">
+                                  <p className={`text-sm font-semibold leading-tight ${
+                                    isActive ? 'text-brand' : 'text-gray-800'
+                                  }`}>{t.name}</p>
+                                  {isScanned && (
+                                    <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider bg-violet-100 text-violet-600">
+                                      Scanned
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="text-[10px] text-gray-500 truncate max-w-[160px]">{t.description}</p>
+                              </div>
+                            </div>
+                            {isActive && <CheckCircle2 className="w-4 h-4 text-brand shrink-0" />}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+            {isOwn && (
+              <button onClick={() => setShowImportModal(true)}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-lg border border-gray-200 text-gray-700 text-xs font-semibold hover:bg-gray-50 transition-colors">
+                <Upload className="w-3.5 h-3.5" />
+                Import Resume
+              </button>
+            )}
+            <button onClick={handleExportPDF}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-gray-900 text-white text-xs font-semibold hover:bg-gray-800 transition-colors shadow-sm">
+              <Download className="w-3.5 h-3.5" />
+              Export PDF
+            </button>
+            {!isOwn && profile?.role === 'employer' && (
+              <button onClick={handleMessageClick}
+                className="px-4 py-2 bg-brand text-white text-xs font-semibold rounded-lg hover:bg-brand-dark transition-colors shadow-sm">
+                Message
               </button>
             )}
           </div>
         </div>
+      </div>
+
+      {/* ── AI Suggestion Banner ── */}
+      {isOwn && suggestion?.suggest && (
+        <div className="resume-page px-4 mt-4 no-print">
+          <AISuggestionBanner suggestion={suggestion} onAccept={handleAcceptSuggestion} onDismiss={clearSuggestion} />
+        </div>
+      )}
+
+      {/* ══ Resume Document — Layout Selector ══ */}
+      <main className="flex-1 px-4 py-6 md:py-8">
+        <div className="resume-page">
+          {(() => {
+            // Scanned/custom templates always use Professional layout
+            // System templates use their specific layout
+            const templateId = activeTemplate.id;
+            const isScanned = !!activeTemplate.candidate_id;
+            const layoutProps = {
+              targetProfile, user, isOwn, activeTemplate,
+              portfolioItems, itemsByType,
+              addingType, setAddingType,
+              editingItem, setEditingItem,
+              editingProfile, setEditingProfile,
+              editName, setEditName, editHeadline, setEditHeadline,
+              editPhone, setEditPhone, editLocation, setEditLocation,
+              savingProfile, handleSaveProfile,
+              avatarInputRef, uploadingAvatar, handleAvatarUpload,
+              handleSaveItem, handleDeleteItem,
+              initials, avatarColor, navigate
+            };
+
+            if (isScanned || templateId === 'professional' || !templateId) {
+              return <ProfessionalLayout {...layoutProps} />;
+            } else if (templateId === 'creative') {
+              return <CreativeLayout {...layoutProps} />;
+            } else if (templateId === 'minimal') {
+              return <MinimalLayout {...layoutProps} />;
+            } else {
+              // Fallback: professional
+              return <ProfessionalLayout {...layoutProps} />;
+            }
+          })()}
+        </div>
       </main>
 
-      {/* Feed Prompt Modal */}
-      <AnimatePresence>
-        {feedPromptItem && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/40 backdrop-blur-sm">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white rounded-3xl shadow-xl border border-gray-100 p-8 max-w-md w-full"
-            >
-              <div className="w-16 h-16 bg-brand/10 rounded-2xl flex items-center justify-center mb-6">
-                <Sparkles className="w-8 h-8 text-brand" />
-              </div>
-              <h3 className="text-2xl font-black text-gray-900 mb-2">Share to Feed?</h3>
-              <p className="text-gray-500 mb-8 font-medium">
-                You just added <strong>{feedPromptItem.title}</strong> to your portfolio. Want to share this milestone with your network on the Feed?
-              </p>
-              
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setFeedPromptItem(null)}
-                  disabled={sharingToFeed}
-                  className="flex-1 py-3.5 rounded-xl font-bold text-gray-500 hover:bg-gray-100 transition-colors"
-                >
-                  Skip
-                </button>
-                <button
-                  onClick={async () => {
-                    setSharingToFeed(true);
-                    try {
-                      await supabase.from('posts').insert({
-                        author_id: user.id,
-                        content: `I just added a new ${feedPromptItem.item_type} to my portfolio: **${feedPromptItem.title}**!\n\n${feedPromptItem.description || ''}`,
-                        type: 'default',
-                        intent: 'milestone',
-                        visibility: 'public'
-                      });
-                      import('react-hot-toast').then(t => t.default.success('Shared to feed!'));
-                      setFeedPromptItem(null);
-                    } catch(err) {
-                      console.error(err);
-                      import('react-hot-toast').then(t => t.default.error('Failed to share to feed'));
-                    } finally {
-                      setSharingToFeed(false);
-                    }
-                  }}
-                  disabled={sharingToFeed}
-                  className="flex-[2] py-3.5 rounded-xl font-bold bg-brand text-white hover:bg-brand-dark transition-colors shadow-lg shadow-brand/20 flex items-center justify-center gap-2"
-                >
-                  {sharingToFeed && <Loader2 className="w-5 h-5 animate-spin" />}
-                  {sharingToFeed ? 'Sharing...' : 'Share to Feed'}
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+      {/* Import Resume Modal */}
+      <ImportResumeModal
+        isOpen={showImportModal}
+        onClose={() => setShowImportModal(false)}
+        onImport={handleResumeImport}
+      />
 
       {/* Message Request Sheet */}
       <MessageRequestSheet
