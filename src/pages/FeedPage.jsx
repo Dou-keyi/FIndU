@@ -29,12 +29,9 @@ import PostInsightsSheet from '../components/feed/PostInsightsSheet';
 import BookmarksSheet from '../components/feed/BookmarksSheet';
 import DMPanel from '../components/feed/DMPanel';
 import KeyboardShortcutsModal from '../components/feed/KeyboardShortcuts';
-import { useAuth } from '../hooks/useAuth';
 import { getFeedPosts, getFeedJobs, createPost } from '../lib/feedData';
 import { generatePortfolioSuggestion } from '../lib/portfolioSuggestion';
 import { usePortfolioSuggestion } from '../context/PortfolioSuggestionContext';
-import { supabase } from '../lib/supabase';
-import PostCard from '../components/feed/PostCard';
 import PostComposerSheet from '../components/feed/PostComposerSheet';
 import JobStripCard from '../components/feed/JobStripCard';
 import FeedJobCard from '../components/feed/FeedJobCard';
@@ -111,17 +108,6 @@ export default function FeedPage() {
             company:companies!company_id(id, name, logo_url)
           )
         `);
-      if (error && error.code !== '23505') throw error;
-      setApplyConfirmNode({ ...job, title: job.title, company_name: job.company?.name });
-      setJobs(prev => prev.map(j => j.id === job.id ? { ...j, has_applied: true } : j));
-      setTopJobs(prev => prev.map(j => j.id === job.id ? { ...j, has_applied: true } : j));
-      if (jobDetailNode?.id === job.id) {
-        setJobDetailNode(prev => ({ ...prev, has_applied: true }));
-      }
-    } catch (err) {
-      console.error('Failed to apply:', err);
-    }
-  };
 
       // Apply Hashtag Filter
       if (hashtagFilter) {
@@ -309,118 +295,9 @@ export default function FeedPage() {
           {!hasMore && !loading && posts.length > 0 && (
             <div className="pt-4 pb-12">
               <CaughtUpCard />
-          {/* Feed Content Area */}
-          <div className="flex-1 px-4 py-4 lg:px-0">
-            {initialLoading ? (
-              <div className="flex items-center justify-center py-20">
-                <div className="spinner" />
-              </div>
-            ) : (
-              <AnimatePresence mode="wait">
-                {/* ALL TAB */}
-                {activeTab === 'all' && (
-                  <motion.div
-                    key="all"
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -10 }}
-                    transition={{ duration: 0.2 }}
-                    className="space-y-4"
-                  >
-                    {/* Mobile Only: Picked for you horizontal strip */}
-                    {!hashtagFilter && topJobs.length > 0 && (
-                      <div className="mb-6 lg:hidden">
-                        <div className="flex items-center gap-2 mb-3">
-                          <Sparkles className="w-4 h-4 text-amber-500" />
-                          <h2 className="text-xs font-bold text-gray-900 uppercase tracking-wider text-balance">
-                            Picked for you
-                          </h2>
-                        </div>
-                        <div className="flex gap-3 overflow-x-auto hide-scrollbar pb-2 -mx-1 px-1">
-                          {topJobs.map((job) => (
-                            <JobStripCard key={job.id} job={job} onClick={() => openJobDetail(job)} />
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Posts */}
-                    {displayedPosts.length === 0 ? (
-                      <p className="text-center text-sm text-gray-400 py-12">No posts found. Be the first to share!</p>
-                    ) : (
-                      displayedPosts.map((post) => (
-                        <PostCard key={post.id} post={post} viewerRole={role} />
-                      ))
-                    )}
-                  </motion.div>
-                )}
-
-                {/* CANDIDATES / COMPANIES TABS */}
-                {(activeTab === 'candidates' || activeTab === 'companies') && (
-                  <motion.div
-                    key={activeTab}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -10 }}
-                    transition={{ duration: 0.2 }}
-                    className="space-y-4"
-                  >
-                    {displayedPosts.length === 0 ? (
-                      <p className="text-center text-sm text-gray-400 py-12">No {activeTab} posts yet.</p>
-                    ) : (
-                      displayedPosts.map((post) => (
-                        <PostCard key={post.id} post={post} viewerRole={role} />
-                      ))
-                    )}
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            )}
-          </div>
-        </main>
-
-        {/* RIGHT COLUMN: Desktop Context Sidebar */}
-        <aside className="hidden lg:block w-80 space-y-6 pt-16">
-          {!hashtagFilter && topJobs.length > 0 && (
-            <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm sticky top-8">
-              <div className="flex items-center gap-2 mb-4">
-                <Sparkles className="w-4 h-4 text-amber-500" />
-                <h2 className="text-sm font-bold text-gray-900 tracking-tight text-balance">
-                  Picked for you
-                </h2>
-              </div>
-              <div className="space-y-3">
-                {topJobs.map((job) => (
-                  <button
-                    key={job.id}
-                    onClick={() => openJobDetail(job)}
-                    className="w-full text-left p-3 rounded-xl hover:bg-gray-50 transition-colors group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-                  >
-                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1 truncate group-hover:text-gray-500 transition-colors">
-                      {job.company?.name || 'Company'}
-                    </p>
-                    <h4 className="text-sm font-semibold text-gray-900 leading-tight mb-1 group-hover:text-brand transition-colors text-balance line-clamp-2">
-                      {job.title}
-                    </h4>
-                    {job.salary_min && job.salary_max && (
-                      <p className="text-xs font-semibold text-emerald-600">
-                        {job.currency || 'MYR'} {(job.salary_min/1000).toFixed(0)}k – {(job.salary_max/1000).toFixed(0)}k
-                      </p>
-                    )}
-                  </button>
-                ))}
-              </div>
-              <button 
-                onClick={() => navigate('/globe')}
-                className="w-full mt-4 py-2.5 text-xs font-semibold text-brand bg-brand/5 hover:bg-brand/10 rounded-xl transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-              >
-                View all jobs →
-              </button>
             </div>
           )}
-
         </div>
-
       </main>
 
       {/* ─── DESKTOP RIGHT SIDEBAR ─── */}
@@ -480,16 +357,9 @@ export default function FeedPage() {
         postId={insightsPostId}
         isOpen={!!insightsPostId}
         onClose={() => setInsightsPostId(null)}
-      {/* Sheets */}
-      <JobDetailModal
-        node={jobDetailNode}
-        isOpen={!!jobDetailNode}
-        onClose={() => setJobDetailNode(null)}
-        onApply={() => {
-          if (jobDetailNode) handleJobApply(jobDetailNode);
-          setJobDetailNode(null);
-        }}
       />
+
+
 
       {/* Moderation: Report & Mute */}
       <ReportSheet 
