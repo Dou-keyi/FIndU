@@ -1,14 +1,38 @@
-// FeedPage.jsx — Responsive desktop-first social feed with 2-column layout on large screens
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { Plus, X, Loader2, Sparkles, Hash } from 'lucide-react';
+import { Sparkles, Edit3 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+
+// --- Global Store & Hooks ---
 import { useAuth } from '../hooks/useAuth';
+import { useFeedStore } from '../store/feedStore';
+import { useFeedRealtime } from '../hooks/useFeedRealtime';
+import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
+import { useInfiniteScroll } from '../hooks/useIntersectionObserver';
+import { useReducedMotion } from '../hooks/useReducedMotion';
+
+// --- Data Fetching ---
+import { supabase } from '../lib/supabase';
+
+// --- Sub-components ---
+import FeedSearchBar from '../components/feed/FeedSearchBar';
+import FeedFilters from '../components/feed/FeedFilters';
+import NewPostsPill from '../components/feed/NewPostsPill';
+import PostCard from '../components/feed/post/PostCard';
+import { PostSkeletonList } from '../components/feed/post/PostSkeleton';
+import CaughtUpCard from '../components/feed/CaughtUpCard';
+import ProfilePeekCard from '../components/feed/ProfilePeekCard';
+
+// --- Sheets & Modals ---
+import ReportSheet from '../components/feed/moderation/ReportSheet';
+import WhyShowingSheet from '../components/feed/moderation/WhyShowingSheet';
+import PostInsightsSheet from '../components/feed/PostInsightsSheet';
+import BookmarksSheet from '../components/feed/BookmarksSheet';
+import DMPanel from '../components/feed/DMPanel';
+import KeyboardShortcutsModal from '../components/feed/KeyboardShortcuts';
 import { getFeedPosts, getFeedJobs, createPost } from '../lib/feedData';
 import { generatePortfolioSuggestion } from '../lib/portfolioSuggestion';
 import { usePortfolioSuggestion } from '../context/PortfolioSuggestionContext';
-import { supabase } from '../lib/supabase';
-import PostCard from '../components/feed/PostCard';
 import PostComposerSheet from '../components/feed/PostComposerSheet';
 import JobStripCard from '../components/feed/JobStripCard';
 import FeedJobCard from '../components/feed/FeedJobCard';
@@ -22,360 +46,383 @@ const TABS = [
 ];
 
 export default function FeedPage() {
-  const { user, profile } = useAuth();
-  const navigate = useNavigate();
+  const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { setSuggestion } = usePortfolioSuggestion();
-  const role = profile?.role || 'candidate';
+  const navigate = useNavigate();
+  const prefersReduced = useReducedMotion();
+  const filter = searchParams.get('filter') || 'for-you';
 
-  const [activeTab, setActiveTab] = useState('all');
-  const [posts, setPosts] = useState([]);
-  const [jobs, setJobs] = useState([]);
-  const [topJobs, setTopJobs] = useState([]);
-  const [initialLoading, setInitialLoading] = useState(true);
-  
-  // Mobile composer sheet
-  const [composerOpen, setComposerOpen] = useState(false);
-  
-  // Inline desktop composer state
-  const [inlineContent, setInlineContent] = useState('');
-  const [inlinePosting, setInlinePosting] = useState(false);
+  // URL Params
+  const hashtagFilter = searchParams.get('hashtag');
 
-  // Sheet state
-  const [jobDetailNode, setJobDetailNode] = useState(null);
-  const [applyConfirmNode, setApplyConfirmNode] = useState(null);
+  // Global State (Zustand)
+  const posts = useFeedStore((s) => s.posts);
+  const setPosts = useFeedStore((s) => s.setPosts);
+  const appendPosts = useFeedStore((s) => s.appendPosts);
+  const pushNewPost = useFeedStore((s) => s.pushNewPost);
+  const subFeedMode = useFeedStore((s) => s.subFeedMode);
+  const activeFilters = useFeedStore((s) => s.activeFilters);
+  const sortBy = useFeedStore((s) => s.sortBy);
+  const searchQuery = useFeedStore((s) => s.searchQuery);
+  const searchTags = useFeedStore((s) => s.searchTags);
+  const setSearchTags = useFeedStore((s) => s.setSearchTags);
 
-  // Hashtag filter from URL
-  const hashtagFilter = searchParams.get('hashtag') || '';
-
-  // Initial data load
+  // Debounce search query to prevent excessive fetches
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(searchQuery);
   useEffect(() => {
-    if (!profile) return;
-    let cancelled = false;
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+  const composerOpen = useFeedStore((s) => s.composerOpen);
+  const setComposerOpen = useFeedStore((s) => s.setComposerOpen);
 
-    async function fetchAll() {
-      if (posts.length === 0 && jobs.length === 0) setInitialLoading(true);
-      try {
-        const [postsData, jobsData] = await Promise.all([
-          getFeedPosts('all', hashtagFilter),
-          getFeedJobs(profile),
-        ]);
-        if (cancelled) return;
-        setPosts(postsData);
-        setJobs(jobsData);
-        setTopJobs(jobsData.slice(0, 5));
-      } catch (err) {
-        console.error('Failed to load feed:', err);
-      } finally {
-        if (!cancelled) setInitialLoading(false);
-      }
+  // Sheets state
+  const reportTarget = useFeedStore((s) => s.reportTarget);
+  const setReportTarget = useFeedStore((s) => s.setReportTarget);
+  const whyTarget = useFeedStore((s) => s.whyTarget);
+  const setWhyTarget = useFeedStore((s) => s.setWhyTarget);
+  const insightsPostId = useFeedStore((s) => s.insightsPostId);
+  const setInsightsPostId = useFeedStore((s) => s.setInsightsPostId);
+
+  // Local state
+  const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const [page, setPage] = useState(0);
+
+  // Hover card state
+  const [peekUser, setPeekUser] = useState(null);
+  const [peekAnchor, setPeekAnchor] = useState(null);
+  const peekTimer = useRef(null);
+
+  // Initialize Global Hooks
+  useFeedRealtime();
+  useKeyboardShortcuts();
+
+  // Sync initial hashtag URL param
+  useEffect(() => {
+    if (hashtagFilter && searchTags.length === 0) {
+      setSearchTags([hashtagFilter.replace(/^#/, '').toLowerCase()]);
     }
+  }, [hashtagFilter]);
 
-    fetchAll();
-    return () => { cancelled = true; };
-  }, [profile, hashtagFilter]);
-
-  const displayedPosts = activeTab === 'all'
-    ? posts
-    : activeTab === 'candidates'
-      ? posts.filter((p) => p.post_type === 'candidate')
-      : activeTab === 'companies'
-        ? posts.filter((p) => p.post_type === 'company')
-        : posts;
-
-  const clearHashtag = () => {
-    searchParams.delete('hashtag');
-    setSearchParams(searchParams);
-  };
-
-  const handlePostCreated = (newPost) => {
-    setPosts((prev) => [newPost, ...prev]);
-  };
-
-  const handleJobApply = async (job) => {
+  // Fetch posts logic
+  const fetchPosts = useCallback(async (pageNum = 0, isAppend = false) => {
     if (!user) return;
     try {
-      const { error } = await supabase
-        .from('applications')
-        .insert({ job_id: job.id, candidate_id: user.id });
+      isAppend ? setLoadingMore(true) : setLoading(true);
 
-      if (error && error.code !== '23505') throw error;
-      setApplyConfirmNode({ ...job, title: job.title, company_name: job.company?.name });
-      setJobs(prev => prev.map(j => j.id === job.id ? { ...j, has_applied: true } : j));
-      setTopJobs(prev => prev.map(j => j.id === job.id ? { ...j, has_applied: true } : j));
-      if (jobDetailNode?.id === job.id) {
-        setJobDetailNode(prev => ({ ...prev, has_applied: true }));
-      }
-    } catch (err) {
-      console.error('Failed to apply:', err);
-    }
-  };
+      let query = supabase
+        .from('posts')
+        .select(`
+          *,
+          author:profiles!author_id(id, full_name, headline, avatar_url, skills, role),
+          company:companies!company_id(id, name, logo_url),
+          poll:polls(*, options:poll_options(*), votes:poll_votes(*)),
+          job:jobs(*, company:companies!company_id(id, name, logo_url)),
+          quoted_post:posts!quoted_post_id(
+            *,
+            author:profiles!author_id(id, full_name, headline, avatar_url, skills, role),
+            company:companies!company_id(id, name, logo_url)
+          )
+        `);
 
-  const openJobDetail = (job) => {
-    setJobDetailNode({
-      ...job,
-      label: job.title,
-      sublabel: job.company?.name,
-      company_name: job.company?.name,
-      skills_required: job.skills_required,
-    });
-  };
-
-  // Handle inline composer submit
-  const submitInlinePost = async () => {
-    if (!inlineContent.trim() || !user || inlinePosting) return;
-    setInlinePosting(true);
-    try {
-      let companyId = null;
-      if (role === 'employer') {
-        const { data: companies } = await supabase
-          .from('companies')
+      // Apply Search Query & Tags
+      if (debouncedSearchQuery.trim()) {
+        const searchStr = debouncedSearchQuery.trim();
+        
+        // Find users matching the name
+        const { data: matchingUsers } = await supabase
+          .from('profiles')
           .select('id')
-          .eq('owner_id', user.id)
-          .limit(1);
-        companyId = companies?.[0]?.id || null;
-      }
-
-      // Very naive hashtag extraction for inline composer
-      const tags = inlineContent.match(/#[\w]+/g)?.map(t => t.replace('#', '')) || [];
-      
-      const newPost = await createPost(
-        user.id,
-        inlineContent.trim(),
-        tags,
-        role === 'employer' ? 'company' : 'candidate',
-        companyId
-      );
-
-      if (newPost) {
-        handlePostCreated(newPost);
-        if (role === 'candidate') {
-          const { data: items } = await supabase.from('portfolio_items').select('item_type, title').eq('candidate_id', user.id);
-          generatePortfolioSuggestion(inlineContent.trim(), items || []).then((result) => {
-            if (result?.suggest) setSuggestion(result);
-          });
+          .ilike('full_name', `%${searchStr}%`);
+          
+        const userIds = matchingUsers?.map(u => u.id) || [];
+        
+        if (userIds.length > 0) {
+          query = query.or(`content.ilike.%${searchStr}%,author_id.in.(${userIds.join(',')})`);
+        } else {
+          query = query.ilike('content', `%${searchStr}%`);
         }
-        setInlineContent('');
       }
+      if (searchTags.length > 0) {
+        query = query.contains('hashtags', searchTags);
+      }
+
+      // Apply Sub-Feed Mode
+      if (subFeedMode === 'following') {
+        const { data: following } = await supabase
+          .from('user_follows')
+          .select('following_id')
+          .eq('follower_id', user.id);
+        
+        if (following && following.length > 0) {
+          const ids = following.map(f => f.following_id);
+          query = query.in('author_id', ids);
+        } else {
+          // Following nobody, return empty
+          if (!isAppend) setPosts([]);
+          setHasMore(false);
+          setLoading(false);
+          setLoadingMore(false);
+          return;
+        }
+      }
+
+      // Apply Type Filters
+      if (activeFilters.length > 0) {
+        const mappedTypes = [];
+        if (activeFilters.includes('polls')) mappedTypes.push('poll');
+        if (activeFilters.includes('milestones')) mappedTypes.push('milestone');
+        if (activeFilters.includes('events')) mappedTypes.push('event');
+
+        const wantsMedia = activeFilters.includes('media');
+
+        if (mappedTypes.length > 0 && wantsMedia) {
+          query = query.or(`type.in.(${mappedTypes.join(',')}),media_urls.neq.{}`);
+        } else if (mappedTypes.length > 0) {
+          query = query.in('type', mappedTypes);
+        } else if (wantsMedia) {
+          query = query.neq('media_urls', '{}');
+        }
+      }
+
+      // Pagination & Sorting
+      const PAGE_SIZE = 15;
+      query = query.range(pageNum * PAGE_SIZE, (pageNum + 1) * PAGE_SIZE - 1);
+
+      if (sortBy === 'latest' || sortBy === 'newest') {
+        query = query.order('created_at', { ascending: false });
+      } else if (sortBy === 'top') {
+        query = query.order('view_count', { ascending: false });
+      } else if (sortBy === 'closest') {
+        // Mock sorting by proximity if location exists. In real app, this requires PostGIS
+        query = query.order('created_at', { ascending: false }); 
+      }
+
+      const { data, error } = await query;
+      if (error) throw error;
+
+      if (!data || data.length < PAGE_SIZE) {
+        setHasMore(false);
+      } else {
+        setHasMore(true);
+      }
+
+      if (isAppend) {
+        appendPosts(data || []);
+      } else {
+        setPosts(data || []);
+      }
+      setPage(pageNum);
+
+    } catch (err) {
+      console.error('Fetch posts error:', err);
     } finally {
-      setInlinePosting(false);
+      setLoading(false);
+      setLoadingMore(false);
     }
-  };
+  }, [user, subFeedMode, activeFilters, sortBy, debouncedSearchQuery, searchTags, appendPosts, setPosts]);
+
+  // Initial fetch and dependency trigger
+  useEffect(() => {
+    fetchPosts(0, false);
+  }, [fetchPosts]);
+
+  // Infinite Scroll Hook
+  const sentinelRef = useInfiniteScroll(
+    () => {
+      if (!loading && !loadingMore && hasMore) {
+        fetchPosts(page + 1, true);
+      }
+    },
+    { enabled: hasMore && !loading }
+  );
+
+  // Profile Peek Hover Handlers
+  const handleMouseOver = useCallback((e) => {
+    // Only trigger on desktop
+    if (window.innerWidth < 1024) return;
+    
+    // Find closest anchor tag or button with a data-user-id attribute
+    // In our new components, we need to ensure profile links set data-user-id
+    const target = e.target.closest('[data-user-id]');
+    if (target) {
+      const uid = target.getAttribute('data-user-id');
+      if (uid && uid !== user?.id) {
+        clearTimeout(peekTimer.current);
+        peekTimer.current = setTimeout(() => {
+          setPeekUser(uid);
+          setPeekAnchor(target.getBoundingClientRect());
+        }, 500); // 500ms delay
+      }
+    }
+  }, [user?.id]);
+
+  const handleMouseOut = useCallback((e) => {
+    clearTimeout(peekTimer.current);
+    // Let ProfilePeekCard handle its own mouseLeave to close
+  }, []);
 
   return (
-    <div className="flex flex-col flex-1 h-full max-w-7xl mx-auto w-full min-w-0">
-      {/* Mobile Floating Action Button (Hidden on lg) */}
-      <div className="lg:hidden fixed bottom-[76px] right-4 z-40">
-        <button
-          onClick={() => setComposerOpen(true)}
-          className="flex h-14 w-14 items-center justify-center rounded-full bg-brand text-white shadow-[0_4px_20px_rgba(59,130,246,0.4)] hover:bg-brand-dark transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-brand"
-          aria-label="Create new post"
-        >
-          <Plus className="w-6 h-6" />
-        </button>
-      </div>
-
-      {/* Main Grid Layout for Desktop */}
-      <div className="flex-1 lg:grid lg:grid-cols-[1fr_320px] lg:gap-8 lg:p-8 min-w-0">
+    <div 
+      className="max-w-7xl mx-auto px-0 lg:px-6 py-4 lg:py-8 lg:grid lg:grid-cols-[1fr_320px] gap-8 items-start min-h-screen"
+      onMouseOver={handleMouseOver}
+      onMouseOut={handleMouseOut}
+    >
+      {/* ─── MAIN COLUMN ─── */}
+      <main className="w-full max-w-2xl mx-auto lg:mx-0 relative">
         
-        {/* CENTER COLUMN: Feed Content */}
-        <main className="flex-1 min-w-0 flex flex-col">
-          {/* Tab bar — sticky */}
-          <div className="sticky top-[56px] lg:top-0 z-10 bg-white/95 backdrop-blur-md border-b border-gray-100 shadow-sm lg:shadow-none lg:rounded-t-2xl lg:px-2">
-            <div className="flex lg:gap-2">
-              {TABS.map((tab) => (
-                <button
-                  key={tab.key}
-                  onClick={() => setActiveTab(tab.key)}
-                  className={`flex-1 lg:flex-none lg:px-6 py-3 text-xs lg:text-sm font-semibold text-center transition-colors relative focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-inset ${
-                    activeTab === tab.key
-                      ? 'text-brand'
-                      : 'text-gray-400 hover:text-gray-900'
-                  }`}
-                >
-                  {tab.label}
-                  {activeTab === tab.key && (
-                    <motion.div
-                      layoutId="tab-indicator"
-                      className="absolute bottom-0 left-1/2 lg:left-0 lg:w-full -translate-x-1/2 lg:translate-x-0 w-8 h-[2px] rounded-t-full bg-brand"
-                      transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-                    />
-                  )}
-                </button>
+        {/* Mobile Header (Hidden on Desktop) */}
+        <div className="lg:hidden flex items-center justify-between px-4 pb-4 sticky top-16 z-30 bg-white/80 backdrop-blur-md border-b border-gray-100">
+          <h1 className="text-xl font-black text-gray-900 tracking-tight flex items-center gap-2">
+            Feed <Sparkles className="w-5 h-5 text-violet-500" />
+          </h1>
+        </div>
+
+        {/* Filters & Search */}
+        <div className="sticky top-[105px] lg:top-20 z-30 bg-white/95 backdrop-blur-md border-b border-gray-100 pb-2 pt-2 lg:pt-0 -mx-4 px-4 lg:mx-0 lg:px-0 lg:border-none lg:bg-transparent flex flex-col gap-2">
+          <FeedSearchBar />
+          <FeedFilters />
+        </div>
+
+        {/* Desktop Inline Composer has been moved to /create-post */}
+
+        {/* New Posts Notification Pill */}
+        <NewPostsPill />
+
+        {/* Feed Content */}
+        <div className="mt-4 lg:mt-6 space-y-4 px-2 lg:px-0 pb-24">
+          
+          {loading ? (
+            <PostSkeletonList count={4} />
+          ) : posts.length === 0 ? (
+            <div className="text-center py-20 bg-white rounded-2xl border border-gray-100 shadow-sm">
+              <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Sparkles className="w-8 h-8 text-gray-400" />
+              </div>
+              <h3 className="text-lg font-bold text-gray-900 mb-2">It's quiet here</h3>
+              <p className="text-gray-500 max-w-sm mx-auto">
+                {subFeedMode === 'following' 
+                  ? "You aren't following anyone with active posts. Follow more people to populate this feed."
+                  : "No posts found matching your current filters."}
+              </p>
+            </div>
+          ) : (
+            <AnimatePresence mode="popLayout">
+              {posts.map((post, idx) => (
+                <PostCard 
+                  key={post.id} 
+                  post={post} 
+                  index={idx} 
+                />
               ))}
-            </div>
-          </div>
+            </AnimatePresence>
+          )}
 
-          {/* Desktop Inline Composer */}
-          <div className="hidden lg:block bg-white rounded-2xl border border-gray-100 shadow-sm p-4 mt-6 mb-2">
-            <textarea
-              className="w-full resize-none text-sm text-gray-800 placeholder-gray-400 focus:outline-none min-h-[60px]"
-              placeholder="Share an update or milestone..."
-              value={inlineContent}
-              onChange={(e) => setInlineContent(e.target.value)}
-            />
-            <div className="flex justify-between items-center mt-2 border-t border-gray-50 pt-3">
-              <span className="text-[10px] text-gray-400">Use #hashtags to categorize</span>
-              <button
-                onClick={submitInlinePost}
-                disabled={!inlineContent.trim() || inlinePosting}
-                className="px-5 py-2 rounded-xl bg-brand text-white text-xs font-semibold hover:bg-brand-dark transition-colors disabled:opacity-50 flex items-center gap-2 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
-              >
-                {inlinePosting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
-                Post
-              </button>
-            </div>
-          </div>
-
-          {/* Hashtag filter banner */}
-          {hashtagFilter && (
-            <div className="bg-violet-50/80 border border-violet-100 lg:rounded-xl px-4 py-3 lg:my-4 flex items-center justify-between">
-              <span className="text-sm text-violet-700 font-medium flex items-center gap-1.5">
-                <Hash className="w-4 h-4" /> Showing posts tagged <span className="font-bold">#{hashtagFilter}</span>
-              </span>
-              <button
-                onClick={clearHashtag}
-                className="flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-full bg-white text-violet-600 hover:bg-violet-100 transition-colors shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500"
-              >
-                Clear
-              </button>
+          {/* Infinite Scroll Sentinel / Loading More */}
+          {hasMore && !loading && (
+            <div ref={sentinelRef} className="py-6 flex justify-center">
+              <div className="spinner" />
             </div>
           )}
 
-          {/* Feed Content Area */}
-          <div className="flex-1 px-4 py-4 lg:px-0">
-            {initialLoading ? (
-              <div className="flex items-center justify-center py-20">
-                <div className="spinner" />
-              </div>
-            ) : (
-              <AnimatePresence mode="wait">
-                {/* ALL TAB */}
-                {activeTab === 'all' && (
-                  <motion.div
-                    key="all"
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -10 }}
-                    transition={{ duration: 0.2 }}
-                    className="space-y-4"
-                  >
-                    {/* Mobile Only: Picked for you horizontal strip */}
-                    {!hashtagFilter && topJobs.length > 0 && (
-                      <div className="mb-6 lg:hidden">
-                        <div className="flex items-center gap-2 mb-3">
-                          <Sparkles className="w-4 h-4 text-amber-500" />
-                          <h2 className="text-xs font-bold text-gray-900 uppercase tracking-wider text-balance">
-                            Picked for you
-                          </h2>
-                        </div>
-                        <div className="flex gap-3 overflow-x-auto hide-scrollbar pb-2 -mx-1 px-1">
-                          {topJobs.map((job) => (
-                            <JobStripCard key={job.id} job={job} onClick={() => openJobDetail(job)} />
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Posts */}
-                    {displayedPosts.length === 0 ? (
-                      <p className="text-center text-sm text-gray-400 py-12">No posts found. Be the first to share!</p>
-                    ) : (
-                      displayedPosts.map((post) => (
-                        <PostCard key={post.id} post={post} viewerRole={role} />
-                      ))
-                    )}
-                  </motion.div>
-                )}
-
-                {/* CANDIDATES / COMPANIES TABS */}
-                {(activeTab === 'candidates' || activeTab === 'companies') && (
-                  <motion.div
-                    key={activeTab}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -10 }}
-                    transition={{ duration: 0.2 }}
-                    className="space-y-4"
-                  >
-                    {displayedPosts.length === 0 ? (
-                      <p className="text-center text-sm text-gray-400 py-12">No {activeTab} posts yet.</p>
-                    ) : (
-                      displayedPosts.map((post) => (
-                        <PostCard key={post.id} post={post} viewerRole={role} />
-                      ))
-                    )}
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            )}
-          </div>
-        </main>
-
-        {/* RIGHT COLUMN: Desktop Context Sidebar */}
-        <aside className="hidden lg:block w-80 space-y-6 pt-16">
-          {!hashtagFilter && topJobs.length > 0 && (
-            <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm sticky top-8">
-              <div className="flex items-center gap-2 mb-4">
-                <Sparkles className="w-4 h-4 text-amber-500" />
-                <h2 className="text-sm font-bold text-gray-900 tracking-tight text-balance">
-                  Picked for you
-                </h2>
-              </div>
-              <div className="space-y-3">
-                {topJobs.map((job) => (
-                  <button
-                    key={job.id}
-                    onClick={() => openJobDetail(job)}
-                    className="w-full text-left p-3 rounded-xl hover:bg-gray-50 transition-colors group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-                  >
-                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1 truncate group-hover:text-gray-500 transition-colors">
-                      {job.company?.name || 'Company'}
-                    </p>
-                    <h4 className="text-sm font-semibold text-gray-900 leading-tight mb-1 group-hover:text-brand transition-colors text-balance line-clamp-2">
-                      {job.title}
-                    </h4>
-                    {job.salary_min && job.salary_max && (
-                      <p className="text-xs font-semibold text-emerald-600">
-                        {job.currency || 'MYR'} {(job.salary_min/1000).toFixed(0)}k – {(job.salary_max/1000).toFixed(0)}k
-                      </p>
-                    )}
-                  </button>
-                ))}
-              </div>
-              <button 
-                onClick={() => navigate('/globe')}
-                className="w-full mt-4 py-2.5 text-xs font-semibold text-brand bg-brand/5 hover:bg-brand/10 rounded-xl transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-              >
-                View all jobs →
-              </button>
+          {/* Caught Up Card */}
+          {!hasMore && !loading && posts.length > 0 && (
+            <div className="pt-4 pb-12">
+              <CaughtUpCard />
             </div>
           )}
-        </aside>
-      </div>
+        </div>
+      </main>
 
-      {/* Mobile Post composer sheet */}
-      <PostComposerSheet
-        isOpen={composerOpen}
-        onClose={() => setComposerOpen(false)}
-        onPostCreated={handlePostCreated}
+      {/* ─── DESKTOP RIGHT SIDEBAR ─── */}
+      <aside className="hidden lg:flex flex-col gap-6 sticky top-24">
+        {/* Placeholder for trending tags, suggested connections, etc. */}
+        <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
+          <h3 className="text-sm font-bold text-gray-900 mb-4 flex items-center gap-2">
+            Trending <Sparkles className="w-4 h-4 text-amber-500" />
+          </h3>
+          <div className="space-y-3">
+            {['#hiring', '#reactjs', '#design', '#frontend'].map((tag) => (
+              <a href={`/feed?hashtag=${encodeURIComponent(tag.replace('#', ''))}`} key={tag} className="flex justify-between items-center group">
+                <span className="text-sm font-semibold text-gray-600 group-hover:text-violet-600 transition-colors">{tag}</span>
+                <span className="text-xs text-gray-400">🔥</span>
+              </a>
+            ))}
+          </div>
+        </div>
+
+        {/* Footer links */}
+        <div className="text-xs text-gray-400 font-medium flex flex-wrap gap-x-3 gap-y-2 px-2">
+          <a href="#" className="hover:text-gray-600 transition-colors">About</a>
+          <a href="#" className="hover:text-gray-600 transition-colors">Accessibility</a>
+          <a href="#" className="hover:text-gray-600 transition-colors">Help Center</a>
+          <a href="#" className="hover:text-gray-600 transition-colors">Privacy & Terms</a>
+          <div className="w-full mt-2 flex items-center gap-1.5">
+            <span className="text-gray-500">© 2026 The_Rookies</span>
+          </div>
+          <div className="w-full mt-1">
+            <span className="text-[10px] text-gray-400 border border-gray-200 rounded px-1.5 py-0.5">Press <kbd className="font-mono">Shift + ?</kbd> for shortcuts</span>
+          </div>
+        </div>
+      </aside>
+
+      {/* ─── CREATE POST FAB ─── */}
+      <button
+        onClick={() => navigate('/create-post')}
+        className="fixed bottom-[88px] md:bottom-8 right-4 md:right-8 z-50 w-14 h-14 bg-brand text-white rounded-full shadow-xl shadow-brand/20 flex items-center justify-center hover:bg-brand-dark hover:scale-105 transition-all active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-[#0A0A10]"
+        aria-label="Create Post"
+      >
+        <Edit3 className="w-6 h-6" />
+      </button>
+
+      {/* ─── GLOBALLY MOUNTED SHEETS / MODALS ─── */}
+
+      {/* DM Panel */}
+      <DMPanel />
+
+      {/* Bookmarks Collections */}
+      <BookmarksSheet 
+        isOpen={useFeedStore((s) => s.bookmarksSheetOpen)} 
+        onClose={() => useFeedStore.getState().setBookmarksSheetOpen(false)} 
       />
 
-      {/* Sheets */}
-      <JobDetailModal
-        node={jobDetailNode}
-        isOpen={!!jobDetailNode}
-        onClose={() => setJobDetailNode(null)}
-        onApply={() => {
-          if (jobDetailNode) handleJobApply(jobDetailNode);
-          setJobDetailNode(null);
-        }}
+      {/* Post Insights */}
+      <PostInsightsSheet 
+        postId={insightsPostId}
+        isOpen={!!insightsPostId}
+        onClose={() => setInsightsPostId(null)}
       />
-      <ApplyConfirmSheet
-        node={applyConfirmNode}
-        isOpen={!!applyConfirmNode}
-        onClose={() => setApplyConfirmNode(null)}
+
+
+
+      {/* Moderation: Report & Mute */}
+      <ReportSheet 
+        target={reportTarget}
+        isOpen={!!reportTarget}
+        onClose={() => setReportTarget(null)}
       />
+
+      {/* Transparency */}
+      <WhyShowingSheet 
+        targetPost={whyTarget}
+        isOpen={!!whyTarget}
+        onClose={() => setWhyTarget(null)}
+      />
+
+      {/* Profile Peek (Desktop Hover Card) */}
+      <ProfilePeekCard 
+        userId={peekUser}
+        anchorRect={peekAnchor}
+        onClose={() => { setPeekUser(null); setPeekAnchor(null); }}
+      />
+
+      {/* Keyboard Shortcuts */}
+      <KeyboardShortcutsModal />
+
     </div>
   );
 }

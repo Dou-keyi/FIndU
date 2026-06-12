@@ -120,7 +120,8 @@ export default function ChatThread({ threadId, isRequest, isDraft, initialMessag
       mounted = false;
       supabase.removeChannel(channel);
     };
-  }, [threadId, userId, onThreadUpdate]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [threadId, userId]);
 
   // Auto-scroll on new messages
   useEffect(() => {
