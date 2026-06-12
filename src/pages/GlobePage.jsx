@@ -1,8 +1,7 @@
 // GlobePage.jsx — orchestrates Globe view and Swipe card flow for job/candidate discovery
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Plus } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { getCandidateGlobeNodes, getEmployerGlobeNodes } from '../lib/globeData';
 import { UniverseBackground } from '../components/UniverseBackground';
@@ -16,15 +15,12 @@ import { useAuthStore } from '../store/authStore';
 
 export default function GlobePage() {
   const { user, profile, signOut } = useAuth();
-  const navigate = useNavigate();
   const role = profile?.role || 'candidate';
 
   // Login transition state
   const justLoggedIn = useAuthStore((s) => s.justLoggedIn);
   const setJustLoggedIn = useAuthStore((s) => s.setJustLoggedIn);
   const [showContent, setShowContent] = useState(!justLoggedIn);
-
-  const isEmployer = role === 'employer';
 
   // Core state
   const [mode, setMode] = useState('globe'); // 'globe' | 'swipe'
@@ -212,17 +208,6 @@ export default function GlobePage() {
             </motion.div>
           )}
         </AnimatePresence>
-
-        {/* Post Job FAB (Employers Only) */}
-        {isEmployer && mode === 'globe' && (
-          <button
-            onClick={() => navigate('/create-job')}
-            className="fixed bottom-[88px] md:bottom-8 right-4 md:right-8 z-50 w-14 h-14 bg-brand text-white rounded-full shadow-xl shadow-brand/20 flex items-center justify-center hover:bg-brand-dark hover:scale-105 transition-all active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-[#0A0A10]"
-            aria-label="Post Job to Globe"
-          >
-            <Plus className="w-6 h-6" />
-          </button>
-        )}
       </main>
 
       {/* Sheets & Modals */}

@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Sparkles, Edit3 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -32,8 +32,10 @@ import KeyboardShortcutsModal from '../components/feed/KeyboardShortcuts';
 
 export default function FeedPage() {
   const { user } = useAuth();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const prefersReduced = useReducedMotion();
+  const filter = searchParams.get('filter') || 'for-you';
 
   // URL Params
   const hashtagFilter = searchParams.get('hashtag');
@@ -310,7 +312,7 @@ export default function FeedPage() {
           <a href="#" className="hover:text-gray-600 transition-colors">Help Center</a>
           <a href="#" className="hover:text-gray-600 transition-colors">Privacy & Terms</a>
           <div className="w-full mt-2 flex items-center gap-1.5">
-            <span className="text-gray-500">© 2026 Antigravity</span>
+            <span className="text-gray-500">© 2026 The_Rookies</span>
           </div>
           <div className="w-full mt-1">
             <span className="text-[10px] text-gray-400 border border-gray-200 rounded px-1.5 py-0.5">Press <kbd className="font-mono">Shift + ?</kbd> for shortcuts</span>
@@ -318,10 +320,10 @@ export default function FeedPage() {
         </div>
       </aside>
 
-      {/* ─── MOBILE FAB ─── */}
+      {/* ─── CREATE POST FAB ─── */}
       <button
-        onClick={() => window.location.href = '/create-post'}
-        className="lg:hidden fixed bottom-[72px] right-4 z-40 w-14 h-14 bg-brand text-white rounded-full shadow-xl flex items-center justify-center hover:bg-brand-dark transition-all active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
+        onClick={() => navigate('/create-post')}
+        className="fixed bottom-[88px] md:bottom-8 right-4 md:right-8 z-50 w-14 h-14 bg-brand text-white rounded-full shadow-xl shadow-brand/20 flex items-center justify-center hover:bg-brand-dark hover:scale-105 transition-all active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-[#0A0A10]"
         aria-label="Create Post"
       >
         <Edit3 className="w-6 h-6" />

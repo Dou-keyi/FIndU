@@ -13,7 +13,6 @@ import MessagingPage from './pages/MessagingPage';
 import TrackingPage from './pages/TrackingPage';
 import JobDetailPage from './pages/JobDetailPage';
 import CreatePostPage from './pages/CreatePostPage';
-import CreateJobPage from './pages/CreateJobPage';
 import OnboardingPage from './pages/OnboardingPage';
 import AuthPage from './pages/AuthPage';
 
@@ -49,7 +48,6 @@ export default function App() {
             <Route path="/tracking" element={<TrackingPage />} />
             <Route path="/jobs/:jobId" element={<JobDetailPage />} />
             <Route path="/create-post" element={<CreatePostPage />} />
-            <Route path="/create-job" element={<CreateJobPage />} />
           </Route>
         </Routes>
         <Toaster />

@@ -13,7 +13,6 @@ const NAV_ITEMS = [
   { path: '/portfolio', icon: FileText, label: 'Portfolio' },
   { path: '/messaging', icon: MessageSquare, label: 'Messages' },
   { path: '/tracking', icon: Clock, label: 'Track' },
-  { path: '/create-post', icon: PlusCircle, label: 'Create Post' },
 ];
 
 export default function SidebarNav() {

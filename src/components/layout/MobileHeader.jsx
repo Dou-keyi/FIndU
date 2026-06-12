@@ -66,16 +66,6 @@ export default function MobileHeader() {
                 View Profile
               </button>
               <button
-                onClick={() => {
-                  setMenuOpen(false);
-                  navigate('/create-post');
-                }}
-                className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-violet-600 hover:bg-violet-50 transition-colors focus-visible:outline-none font-medium"
-              >
-                <PlusCircle className="w-4 h-4" aria-hidden="true" />
-                Create Post
-              </button>
-              <button
                 onClick={handleLogoutClick}
                 className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors focus-visible:outline-none focus-visible:bg-red-50 font-medium"
               >

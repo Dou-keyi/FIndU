@@ -1,8 +1,8 @@
 // PortfolioPage.jsx — living portfolio with CRUD, AI suggestions, and employer read-only view
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Plus, Loader2 } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { Plus, Loader2, Sparkles } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../hooks/useAuth';
 import { usePortfolioSuggestion } from '../context/PortfolioSuggestionContext';
 import { supabase } from '../lib/supabase';
@@ -23,6 +23,10 @@ export default function PortfolioPage() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
+  
+  // Prompt state
+  const [feedPromptItem, setFeedPromptItem] = useState(null);
+  const [sharingToFeed, setSharingToFeed] = useState(false);
   
   // Message request state
   const [employerJob, setEmployerJob] = useState(null);
@@ -139,6 +143,7 @@ export default function PortfolioPage() {
 
         if (error) throw error;
         setPortfolioItems((prev) => [data, ...prev]);
+        setFeedPromptItem(data);
       }
 
       setShowForm(false);
@@ -370,6 +375,64 @@ export default function PortfolioPage() {
           </div>
         </div>
       </main>
+
+      {/* Feed Prompt Modal */}
+      <AnimatePresence>
+        {feedPromptItem && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/40 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white rounded-3xl shadow-xl border border-gray-100 p-8 max-w-md w-full"
+            >
+              <div className="w-16 h-16 bg-brand/10 rounded-2xl flex items-center justify-center mb-6">
+                <Sparkles className="w-8 h-8 text-brand" />
+              </div>
+              <h3 className="text-2xl font-black text-gray-900 mb-2">Share to Feed?</h3>
+              <p className="text-gray-500 mb-8 font-medium">
+                You just added <strong>{feedPromptItem.title}</strong> to your portfolio. Want to share this milestone with your network on the Feed?
+              </p>
+              
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setFeedPromptItem(null)}
+                  disabled={sharingToFeed}
+                  className="flex-1 py-3.5 rounded-xl font-bold text-gray-500 hover:bg-gray-100 transition-colors"
+                >
+                  Skip
+                </button>
+                <button
+                  onClick={async () => {
+                    setSharingToFeed(true);
+                    try {
+                      await supabase.from('posts').insert({
+                        author_id: user.id,
+                        content: `I just added a new ${feedPromptItem.item_type} to my portfolio: **${feedPromptItem.title}**!\n\n${feedPromptItem.description || ''}`,
+                        type: 'default',
+                        intent: 'milestone',
+                        visibility: 'public'
+                      });
+                      import('react-hot-toast').then(t => t.default.success('Shared to feed!'));
+                      setFeedPromptItem(null);
+                    } catch(err) {
+                      console.error(err);
+                      import('react-hot-toast').then(t => t.default.error('Failed to share to feed'));
+                    } finally {
+                      setSharingToFeed(false);
+                    }
+                  }}
+                  disabled={sharingToFeed}
+                  className="flex-[2] py-3.5 rounded-xl font-bold bg-brand text-white hover:bg-brand-dark transition-colors shadow-lg shadow-brand/20 flex items-center justify-center gap-2"
+                >
+                  {sharingToFeed && <Loader2 className="w-5 h-5 animate-spin" />}
+                  {sharingToFeed ? 'Sharing...' : 'Share to Feed'}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* Message Request Sheet */}
       <MessageRequestSheet
