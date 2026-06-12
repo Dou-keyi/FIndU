@@ -84,7 +84,27 @@ export async function getSavedJobs(userId) {
     console.error('Failed to fetch saved jobs:', error);
     return [];
   }
-  return data || [];
+
+  const { data: apps } = await supabase
+    .from('applications')
+    .select('job_id, status')
+    .eq('candidate_id', userId);
+  
+  let appliedJobIds = new Set();
+  if (apps) {
+    apps.forEach(app => {
+      if (app.status !== 'rejected') {
+        appliedJobIds.add(app.job_id);
+      }
+    });
+  }
+
+  return (data || []).map(savedJob => {
+    if (savedJob.job) {
+      savedJob.job.has_applied = appliedJobIds.has(savedJob.job.id);
+    }
+    return savedJob;
+  });
 }
 
 export async function removeSavedJob(savedJobId) {

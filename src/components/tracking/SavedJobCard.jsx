@@ -75,10 +75,15 @@ export default function SavedJobCard({ savedJob, onApply, onRemove, isRemoving }
           </button>
           <button
             onClick={() => onApply(savedJob)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-600 text-xs font-semibold hover:bg-emerald-100 transition-colors border border-emerald-200"
+            disabled={job?.has_applied}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors border ${
+              job?.has_applied
+                ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed'
+                : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100 border-emerald-200'
+            }`}
           >
-            Apply now
-            <ArrowRight className="w-3 h-3" />
+            {job?.has_applied ? 'Applied' : 'Apply now'}
+            {!job?.has_applied && <ArrowRight className="w-3 h-3" />}
           </button>
         </div>
       </div>

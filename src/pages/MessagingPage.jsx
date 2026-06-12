@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../hooks/useAuth';
-import { getMyThreads, getMyRequests, respondToRequest } from '../lib/messagingData';
+import { getMyThreads, getMyRequests, getMySentRequests, respondToRequest } from '../lib/messagingData';
 import { toast } from '../components/ui/use-toast';
 import RequestsList from '../components/messaging/RequestsList';
 import ThreadList from '../components/messaging/ThreadList';
@@ -29,8 +29,35 @@ export default function MessagingPage() {
     
     // Load threads
     setLoadingThreads(true);
-    const threadsData = await getMyThreads(user.id);
-    setThreads(threadsData);
+    const [threadsData, sentReqsData] = await Promise.all([
+      getMyThreads(user.id),
+      getMySentRequests(user.id)
+    ]);
+
+    const sentReqThreads = sentReqsData.map(req => ({
+      id: `req_${req.id}`,
+      isRequest: true,
+      match: {
+        job: req.job,
+        employer: role === 'employer' ? profile : req.recipient,
+        candidate: role === 'candidate' ? profile : req.recipient,
+      },
+      messages: [{
+        id: `msg_${req.id}`,
+        content: req.intro_message,
+        sender_id: user.id,
+        seen: true,
+        sent_at: req.created_at
+      }]
+    }));
+
+    const allThreads = [...threadsData, ...sentReqThreads].sort((a, b) => {
+      const aTime = new Date(a.messages?.[0]?.sent_at || a.created_at || 0).getTime();
+      const bTime = new Date(b.messages?.[0]?.sent_at || b.created_at || 0).getTime();
+      return bTime - aTime;
+    });
+
+    setThreads(allThreads);
     setLoadingThreads(false);
 
     // Load requests
@@ -215,6 +242,8 @@ export default function MessagingPage() {
           >
             <ChatThread
               threadId={activeThreadId}
+              isRequest={activeThread?.isRequest}
+              initialMessages={activeThread?.isRequest ? activeThread.messages : null}
               otherParty={otherParty}
               jobContext={jobContext}
               userId={user?.id}

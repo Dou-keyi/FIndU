@@ -147,9 +147,14 @@ export default function JobDetailSheet({ node, isOpen, onClose, onApply, onSkip 
                     onApply?.();
                     onClose();
                   }}
-                  className="flex-1 py-3 px-4 rounded-xl bg-brand text-white text-sm font-semibold hover:bg-brand-dark transition-colors shadow-md"
+                  disabled={node.has_applied}
+                  className={`flex-1 py-3 px-4 rounded-xl text-sm font-semibold transition-colors shadow-md ${
+                    node.has_applied
+                      ? 'bg-gray-100 text-gray-400 cursor-not-allowed shadow-none border border-gray-200'
+                      : 'bg-brand text-white hover:bg-brand-dark'
+                  }`}
                 >
-                  Apply →
+                  {node.has_applied ? 'Applied' : 'Apply →'}
                 </button>
               </div>
             </div>

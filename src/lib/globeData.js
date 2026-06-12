@@ -42,6 +42,21 @@ export async function getCandidateGlobeNodes(profile) {
 
     const swipedIds = new Set((swipedActions || []).map((s) => s.target_id));
 
+    // 2.5 Fetch applications to mark has_applied
+    const { data: apps } = await supabase
+      .from('applications')
+      .select('job_id, status')
+      .eq('candidate_id', profile.id);
+    
+    let appliedJobIds = new Set();
+    if (apps) {
+      apps.forEach(app => {
+        if (app.status !== 'rejected') {
+          appliedJobIds.add(app.job_id);
+        }
+      });
+    }
+
     // 3. Score, filter, sort
     const scored = (jobs || [])
       .filter((job) => !swipedIds.has(job.id))
@@ -63,6 +78,7 @@ export async function getCandidateGlobeNodes(profile) {
         salary_max: job.salary_max,
         currency: job.currency || 'MYR',
         experience_level: job.experience_level,
+        has_applied: appliedJobIds.has(job.id),
         matchScore: computeMatchScore(
           profile.skills,
           job.skills_required,

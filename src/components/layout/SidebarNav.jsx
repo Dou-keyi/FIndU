@@ -8,7 +8,7 @@ import { getInitials, getAvatarColor } from '../../lib/avatarUtils';
 import LogoutConfirmModal from './LogoutConfirmModal';
 
 const NAV_ITEMS = [
-  { path: '/globe', icon: Globe2, label: 'Globe' },
+  { path: '/globe', icon: Globe2, label: 'Jobs' },
   { path: '/feed', icon: Newspaper, label: 'Feed' },
   { path: '/portfolio', icon: FileText, label: 'Portfolio' },
   { path: '/messaging', icon: MessageSquare, label: 'Messages' },
@@ -79,6 +79,27 @@ export default function SidebarNav() {
             </button>
           );
         })}
+        {profile?.role === 'employer' && (
+          <button
+            onClick={() => navigate('/post-job')}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand ${
+              location.pathname === '/post-job'
+                ? 'bg-brand/5 text-brand font-semibold'
+                : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900 font-medium'
+            }`}
+          >
+            <PlusCircle
+              className={`w-5 h-5 transition-transform duration-200 ${
+                location.pathname === '/post-job' ? 'scale-110' : 'group-hover:scale-110'
+              }`}
+              strokeWidth={location.pathname === '/post-job' ? 2.5 : 2}
+            />
+            <span className="text-sm tracking-wide">Post Job</span>
+            {location.pathname === '/post-job' && (
+              <div className="absolute left-0 w-1 h-8 bg-brand rounded-r-full" aria-hidden="true" />
+            )}
+          </button>
+        )}
       </nav>
 
       {/* Mini Profile (Bottom) */}

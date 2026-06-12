@@ -1,16 +1,18 @@
 // GlobePage.jsx — orchestrates Globe view and Swipe card flow for job/candidate discovery
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, ChevronDown } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { getCandidateGlobeNodes, getEmployerGlobeNodes } from '../lib/globeData';
 import { UniverseBackground } from '../components/UniverseBackground';
 import Globe from '../components/globe/Globe';
 import SwipeStack from '../components/swipe/SwipeStack';
-import JobDetailSheet from '../components/swipe/JobDetailSheet';
+import JobDetailModal from '../components/swipe/JobDetailModal';
 import CandidatePortfolioSheet from '../components/swipe/CandidatePortfolioSheet';
 import ApplyConfirmSheet from '../components/swipe/ApplyConfirmSheet';
 import MutualMatchModal from '../components/swipe/MutualMatchModal';
+import JobsListSection from '../components/globe/JobsListSection';
+import { supabase } from '../lib/supabase';
 import { useAuthStore } from '../store/authStore';
 
 export default function GlobePage() {
@@ -25,6 +27,7 @@ export default function GlobePage() {
   // Core state
   const [mode, setMode] = useState('globe'); // 'globe' | 'swipe'
   const [nodes, setNodes] = useState([]);
+  const [employerJobs, setEmployerJobs] = useState([]);
   const [swipeQueue, setSwipeQueue] = useState([]);
   const [activeNode, setActiveNode] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -43,11 +46,21 @@ export default function GlobePage() {
     async function loadNodes() {
       setLoading(true);
       try {
-        const data =
-          role === 'candidate'
-            ? await getCandidateGlobeNodes(profile)
-            : await getEmployerGlobeNodes(profile);
-        setNodes(data);
+        if (role === 'candidate') {
+          const data = await getCandidateGlobeNodes(profile);
+          setNodes(data);
+        } else {
+          const data = await getEmployerGlobeNodes(profile);
+          setNodes(data);
+          
+          if (profile?.id) {
+            const { data: comp } = await supabase.from('companies').select('id').eq('owner_id', profile.id).limit(1).maybeSingle();
+            if (comp) {
+              const { data: eJobs } = await supabase.from('jobs').select('id, title, company:companies(name)').eq('company_id', comp.id).eq('status', 'open');
+              setEmployerJobs(eJobs || []);
+            }
+          }
+        }
       } catch (err) {
         console.error('Failed to load globe data:', err);
       } finally {
@@ -110,6 +123,24 @@ export default function GlobePage() {
     setMutualMatchNode(node);
   }, []);
 
+  const handleJobApply = async (job) => {
+    if (!user) return;
+    try {
+      const { error } = await supabase
+        .from('applications')
+        .insert({ job_id: job.id, candidate_id: user.id });
+
+      if (error && error.code !== '23505') throw error;
+      setApplyConfirmNode({ ...job, title: job.title, company_name: job.company?.name });
+      setNodes(prev => prev.map(n => n.id === job.id ? { ...n, has_applied: true } : n));
+      if (jobDetailNode?.id === job.id) {
+        setJobDetailNode(prev => ({ ...prev, has_applied: true }));
+      }
+    } catch (err) {
+      console.error('Failed to apply:', err);
+    }
+  };
+
   // Get user initials for avatar
   const userInitials = profile?.full_name
     ? profile.full_name
@@ -121,38 +152,43 @@ export default function GlobePage() {
     : '?';
 
   return (
-    <div className="relative min-h-screen min-h-[100dvh] flex flex-col overflow-hidden">
+    <div className={`relative min-h-screen min-h-[100dvh] flex flex-col overflow-x-hidden ${mode === 'swipe' ? 'overflow-hidden' : 'overflow-y-auto'}`}>
       {/* Deep-space background */}
       <UniverseBackground showConstellation={false} />
+      
+      {/* Extra ambient light for the globe section sky */}
+      <div className="absolute top-[20%] left-1/2 -translate-x-1/2 w-[80vw] h-[80vw] max-w-[800px] max-h-[800px] bg-blue-500/15 rounded-full blur-[120px] pointer-events-none z-0 mix-blend-screen" />
+      <div className="absolute top-[40%] left-1/2 -translate-x-1/2 w-[60vw] h-[60vw] max-w-[600px] max-h-[600px] bg-cyan-400/10 rounded-full blur-[100px] pointer-events-none z-0 mix-blend-screen" />
 
 
       {/* Main content area */}
       <main className="relative z-20 flex-1 flex flex-col">
-        <AnimatePresence mode="wait">
-          {mode === 'globe' ? (
-            <motion.div
-              key="globe"
-              className="flex-1 flex flex-col"
-              initial={justLoggedIn ? { opacity: 0, scale: 0.9, y: 30 } : { opacity: 0, scale: 0.95 }}
-              animate={showContent ? { opacity: 1, scale: 1, y: 0 } : {}}
-              exit={{ opacity: 0, scale: 0.95 }}
-              transition={{ duration: 0.8, delay: 0.4, ease: [0.22, 1, 0.36, 1] }}
-            >
-              {/* Globe */}
-              <div className="flex-1 flex items-center justify-center">
-                <Globe
-                  nodes={nodes}
-                  profile={profile}
-                  role={role}
-                  onNodeClick={handleNodeClick}
-                  loading={loading}
-                />
-              </div>
+        {/* Globe View (Kept mounted to preserve heavy WebGL context and avoid lag) */}
+        <motion.div
+          className={`w-full flex-col ${mode === 'globe' ? 'relative flex' : 'absolute inset-0 flex pointer-events-none'}`}
+          initial={justLoggedIn ? { opacity: 0, scale: 0.9, y: 30 } : { opacity: 0, scale: 0.95 }}
+          animate={
+            mode === 'globe' && showContent 
+              ? { opacity: 1, scale: 1, y: 0 } 
+              : { opacity: 0, scale: 0.95, y: 0 }
+          }
+          transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+        >
+          {/* Globe Container */}
+          <div className="relative min-h-[100dvh] flex flex-col items-center justify-center pt-16 lg:pt-0 pb-24">
+            <Globe
+              nodes={nodes}
+              profile={profile}
+              role={role}
+              onNodeClick={handleNodeClick}
+              loading={loading}
+            />
 
-              {/* Bottom info bar */}
+            {/* Bottom Overlay: Info Bar & Scroll Tip */}
+            <div className="absolute bottom-6 left-0 right-0 flex flex-col items-center pointer-events-none">
               {!loading && nodes.length > 0 && (
                 <motion.div
-                  className="text-center pb-4"
+                  className="text-center mb-6 pointer-events-auto"
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.5 }}
@@ -165,20 +201,54 @@ export default function GlobePage() {
               )}
 
               {!loading && nodes.length === 0 && (
-                <div className="text-center pb-4">
+                <div className="text-center mb-6 pointer-events-auto">
                   <p className="text-sm text-white/50">
                     No new matches right now. Check back later!
                   </p>
                 </div>
               )}
-            </motion.div>
-          ) : (
+
+              {/* Scroll down tip */}
+              {!loading && (
+                <motion.div
+                  className="flex flex-col items-center justify-center opacity-60 hover:opacity-100 transition-opacity cursor-pointer pointer-events-auto"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 1, duration: 1 }}
+                  onClick={() => window.scrollTo({ top: window.innerHeight * 0.9, behavior: 'smooth' })}
+                >
+                  <span className="text-[10px] font-bold text-white/40 tracking-[0.2em] uppercase mb-2">
+                    Scroll for Listings
+                  </span>
+                  <motion.div
+                    animate={{ y: [0, 5, 0] }}
+                    transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
+                  >
+                    <ChevronDown className="w-5 h-5 text-white/40" />
+                  </motion.div>
+                </motion.div>
+              )}
+            </div>
+          </div>
+
+          {/* Jobs List Section */}
+          <JobsListSection 
+            profile={profile} 
+            onJobClick={handleShowJobDetail} 
+            onJobApply={handleJobApply} 
+            onCandidateClick={handleShowCandidateDetail}
+          />
+        </motion.div>
+
+        {/* Swipe View */}
+        <AnimatePresence>
+          {mode === 'swipe' && (
             <motion.div
               key="swipe"
-              className="flex-1 flex flex-col"
+              className="absolute inset-0 flex flex-col z-10"
               initial={{ opacity: 0, y: 60 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 60 }}
+              exit={{ opacity: 0, scale: 0.95 }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
             >
               {/* Back to Globe Header */}
@@ -199,6 +269,7 @@ export default function GlobePage() {
                 user={user}
                 profile={profile}
                 activeJobId={activeJobId}
+                employerJobs={employerJobs}
                 onShowJobDetail={handleShowJobDetail}
                 onShowCandidateDetail={handleShowCandidateDetail}
                 onApplyConfirm={handleApplyConfirm}
@@ -211,18 +282,12 @@ export default function GlobePage() {
       </main>
 
       {/* Sheets & Modals */}
-      <JobDetailSheet
+      <JobDetailModal
         node={jobDetailNode}
         isOpen={!!jobDetailNode}
         onClose={() => setJobDetailNode(null)}
         onApply={() => {
-          // Trigger a right swipe from the detail sheet
-          if (swipeQueue.length > 0) {
-            // We'll handle this by simulating a right swipe
-            setJobDetailNode(null);
-          }
-        }}
-        onSkip={() => {
+          if (jobDetailNode) handleJobApply(jobDetailNode);
           setJobDetailNode(null);
         }}
       />

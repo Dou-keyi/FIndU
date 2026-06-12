@@ -1,6 +1,6 @@
 // CompanyPage.jsx — public company profile with open roles, follow, and HR management
 import React, { useState, useEffect, useCallback } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Users, ShieldCheck, UserPlus, Trash2, Loader2, Building2 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
@@ -8,8 +8,10 @@ import { supabase } from '../lib/supabase';
 import { toggleFollow, checkIsFollowing, getFollowerCount } from '../lib/feedData';
 import { getInitials, getAvatarColor, getBrandTint } from '../lib/avatarUtils';
 import FeedJobCard from '../components/feed/FeedJobCard';
-import JobDetailSheet from '../components/swipe/JobDetailSheet';
+import JobDetailModal from '../components/swipe/JobDetailModal';
 import ApplyConfirmSheet from '../components/swipe/ApplyConfirmSheet';
+import { deleteJob } from '../lib/jobPostingData';
+import { toast } from '../components/ui/use-toast';
 
 export default function CompanyPage() {
   const { companyId } = useParams();
@@ -23,6 +25,7 @@ export default function CompanyPage() {
   const [isFollowing, setIsFollowing] = useState(false);
   const [followLoading, setFollowLoading] = useState(false);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
   // Sheet state
   const [jobDetailNode, setJobDetailNode] = useState(null);
@@ -33,6 +36,7 @@ export default function CompanyPage() {
   const [inviteSent, setInviteSent] = useState(false);
 
   const isOwner = company?.owner_id === user?.id;
+  const isEmployerForCompany = isOwner || hrSeats.some(s => s.profile_id === user?.id);
 
   // Load company data
   const loadData = useCallback(async () => {
@@ -154,6 +158,21 @@ export default function CompanyPage() {
     setInviteSent(true);
     setInviteEmail('');
     setTimeout(() => setInviteSent(false), 3000);
+  };
+
+  const handleEditJob = (jobId) => {
+    navigate(`/edit-job/${jobId}`);
+  };
+
+  const handleDeleteJob = async (jobId) => {
+    if (!window.confirm("Are you sure you want to delete this job?")) return;
+    try {
+      await deleteJob(jobId);
+      setCompanyJobs((prev) => prev.filter((j) => j.id !== jobId));
+      toast({ title: 'Job Deleted', description: 'The job posting has been removed.', variant: 'success' });
+    } catch (err) {
+      toast({ title: 'Error', description: 'Could not delete job', variant: 'destructive' });
+    }
   };
 
   if (loading) {
@@ -291,6 +310,9 @@ export default function CompanyPage() {
                       job={job}
                       onViewDetail={openJobDetail}
                       onApply={handleJobApply}
+                      isEmployerForCompany={isEmployerForCompany}
+                      onEdit={handleEditJob}
+                      onDelete={handleDeleteJob}
                     />
                   ))}
                 </div>
@@ -382,7 +404,7 @@ export default function CompanyPage() {
       </main>
 
       {/* Job detail sheet */}
-      <JobDetailSheet
+      <JobDetailModal
         node={jobDetailNode}
         isOpen={!!jobDetailNode}
         onClose={() => setJobDetailNode(null)}
@@ -390,7 +412,6 @@ export default function CompanyPage() {
           if (jobDetailNode) handleJobApply(jobDetailNode);
           setJobDetailNode(null);
         }}
-        onSkip={() => setJobDetailNode(null)}
       />
 
       {/* Apply confirmation */}

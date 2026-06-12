@@ -43,7 +43,7 @@ function MessageBubble({ message, isMine, isLast }) {
   );
 }
 
-export default function ChatThread({ threadId, otherParty, jobContext, userId, onBack, onThreadUpdate }) {
+export default function ChatThread({ threadId, isRequest, initialMessages, otherParty, jobContext, userId, onBack, onThreadUpdate }) {
   const [messages, setMessages] = useState([]);
   const [inputValue, setInputValue] = useState('');
   const [sending, setSending] = useState(false);
@@ -61,6 +61,14 @@ export default function ChatThread({ threadId, otherParty, jobContext, userId, o
 
     async function loadMessages() {
       setInitialLoading(true);
+      if (isRequest) {
+        if (mounted) {
+          setMessages(initialMessages || []);
+          setInitialLoading(false);
+        }
+        return;
+      }
+
       const data = await getThreadMessages(threadId);
       if (mounted) {
         setMessages(data);
@@ -72,6 +80,8 @@ export default function ChatThread({ threadId, otherParty, jobContext, userId, o
     }
 
     loadMessages();
+
+    if (isRequest) return;
 
     // Subscribe to new messages
     const channel = supabase
@@ -233,30 +243,36 @@ export default function ChatThread({ threadId, otherParty, jobContext, userId, o
 
       {/* Input bar */}
       <div className="flex-shrink-0 bg-white border-t border-slate-200 px-4 py-3">
-        <div className="flex items-end gap-2">
-          <textarea
-            ref={textareaRef}
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Type a message…"
-            rows={1}
-            className="flex-1 resize-none rounded-xl border border-slate-200 px-4 py-2.5 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand transition-all bg-slate-50"
-            style={{ maxHeight: 120 }}
-          />
-          <button
-            onClick={handleSend}
-            disabled={!inputValue.trim() || sending}
-            className={`flex items-center justify-center w-10 h-10 rounded-xl transition-all flex-shrink-0 ${
-              inputValue.trim()
-                ? 'bg-brand text-white shadow-sm hover:bg-brand-dark active:scale-95'
-                : 'bg-slate-100 text-slate-300 cursor-not-allowed'
-            }`}
-            aria-label="Send message"
-          >
-            <Send className="w-4 h-4" />
-          </button>
-        </div>
+        {isRequest ? (
+          <div className="flex items-center justify-center p-3 text-sm text-slate-500 bg-slate-50 rounded-xl border border-slate-200">
+            Waiting for {otherParty?.full_name || 'candidate'} to accept your request.
+          </div>
+        ) : (
+          <div className="flex items-end gap-2">
+            <textarea
+              ref={textareaRef}
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Type a message…"
+              rows={1}
+              className="flex-1 resize-none rounded-xl border border-slate-200 px-4 py-2.5 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand transition-all bg-slate-50"
+              style={{ maxHeight: 120 }}
+            />
+            <button
+              onClick={handleSend}
+              disabled={!inputValue.trim() || sending}
+              className={`flex items-center justify-center w-10 h-10 rounded-xl transition-all flex-shrink-0 ${
+                inputValue.trim()
+                  ? 'bg-brand text-white shadow-sm hover:bg-brand-dark active:scale-95'
+                  : 'bg-slate-100 text-slate-300 cursor-not-allowed'
+              }`}
+              aria-label="Send message"
+            >
+              <Send className="w-4 h-4" />
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
