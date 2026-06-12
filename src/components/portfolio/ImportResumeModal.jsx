@@ -4,9 +4,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   X, Upload, FileText, Loader2, CheckCircle2, AlertCircle,
   GraduationCap, Briefcase, Award, ShieldCheck, Languages,
-  Heart, User, Sparkles
+  Heart, User, Sparkles, Palette
 } from 'lucide-react';
-import { extractTextFromPDF, parseResumeWithAI } from '../../lib/resumeParser';
+import { extractTextFromPDF, parseResumeWithAI, extractTemplateFromPDF } from '../../lib/resumeParser';
 
 const SECTION_ICONS = {
   summary: User,
@@ -80,6 +80,16 @@ export default function ImportResumeModal({ isOpen, onClose, onImport }) {
 
       setProgressMsg('Analyzing resume with AI…');
       const result = await parseResumeWithAI(text);
+
+      // Scan template design from the PDF
+      setProgressMsg('Scanning template design…');
+      try {
+        const templateDesign = await extractTemplateFromPDF(file);
+        result.scannedTemplate = templateDesign;
+      } catch (tmplErr) {
+        console.warn('Failed to scan template design:', tmplErr);
+      }
+
       setParsedData(result);
       setStep('preview');
     } catch (err) {
@@ -271,6 +281,22 @@ export default function ImportResumeModal({ isOpen, onClose, onImport }) {
                     </div>
                   )}
                 </div>
+
+                {/* Scanned template indicator */}
+                {parsedData.scannedTemplate && (
+                  <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-violet-50 border border-violet-100">
+                    <div className="p-1.5 rounded-lg bg-violet-100">
+                      <Palette className="w-4 h-4 text-violet-600" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-violet-800">Template design detected</p>
+                      <p className="text-xs text-violet-500 truncate">
+                        "{parsedData.scannedTemplate.name}" — will be added as a new template option
+                      </p>
+                    </div>
+                    <CheckCircle2 className="w-4 h-4 text-violet-400 shrink-0" />
+                  </div>
+                )}
 
                 {/* Summary */}
                 <div className="flex items-center gap-2 pt-2">

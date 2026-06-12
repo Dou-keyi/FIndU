@@ -7,7 +7,7 @@ import {
   Heart, User, Palette, Layout, Minimize2
 } from 'lucide-react';
 import { Button } from '../ui/button';
-import { extractTextFromPDF, parseResumeWithAI } from '../../lib/resumeParser';
+import { extractTextFromPDF, parseResumeWithAI, extractTemplateFromPDF } from '../../lib/resumeParser';
 
 /* ─── Section display metadata ─── */
 const SECTION_ICONS = {
@@ -104,6 +104,15 @@ export default function ResumeUploadStep({ onResumeData, onTemplateSelect, onCon
 
       setProgressMsg('Analyzing resume with AI…');
       const result = await parseResumeWithAI(text);
+      
+      setProgressMsg('Scanning template design…');
+      try {
+        const templateDesign = await extractTemplateFromPDF(file);
+        result.scannedTemplate = templateDesign;
+      } catch (tmplErr) {
+        console.warn('Failed to scan template design:', tmplErr);
+      }
+
       setParsedData(result);
       setPhase('preview');
     } catch (err) {
@@ -317,6 +326,22 @@ export default function ResumeUploadStep({ onResumeData, onTemplateSelect, onCon
                 </div>
               )}
             </div>
+
+            {/* Scanned template indicator */}
+            {parsedData.scannedTemplate && (
+              <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-violet-50 border border-violet-100">
+                <div className="p-1.5 rounded-lg bg-violet-100">
+                  <Palette className="w-4 h-4 text-violet-600" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-violet-800">Template design captured</p>
+                  <p className="text-xs text-violet-500 truncate">
+                    "{parsedData.scannedTemplate.name}" — available in your portfolio templates
+                  </p>
+                </div>
+                <CheckCircle2 className="w-4 h-4 text-violet-400 shrink-0" />
+              </div>
+            )}
 
             {/* Total count */}
             <div className="flex items-center gap-2 pt-1">

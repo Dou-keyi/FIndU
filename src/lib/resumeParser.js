@@ -118,3 +118,104 @@ Respond ONLY with valid JSON in this exact shape — no markdown, no preamble:
   const cleaned = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
   return JSON.parse(cleaned);
 }
+
+/**
+ * Extract layout and design template from the first page of a PDF using Gemini Vision
+ * @param {File} file - a PDF File object
+ * @returns {Promise<Object>} - parsed template data
+ */
+export async function extractTemplateFromPDF(file) {
+  if (!GEMINI_API_KEY) {
+    throw new Error('Gemini API key not configured.');
+  }
+
+  // 1. Render first page of PDF to canvas to get an image
+  const arrayBuffer = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+  const page = await pdf.getPage(1);
+  
+  // Use a reasonable scale to get a good quality image but not too large
+  const viewport = page.getViewport({ scale: 1.5 });
+  const canvas = document.createElement('canvas');
+  const context = canvas.getContext('2d');
+  canvas.height = viewport.height;
+  canvas.width = viewport.width;
+  
+  await page.render({ canvasContext: context, viewport }).promise;
+  
+  // Convert canvas to base64 jpeg
+  const base64DataUrl = canvas.toDataURL('image/jpeg', 0.8);
+  const base64String = base64DataUrl.split(',')[1];
+
+  // 2. Call Gemini Vision API
+  const prompt = `You are an expert web designer. Analyze this resume design and generate custom CSS to visually replicate its precise look and feel for a web portfolio.
+Specifically, look for wavy patterns, geometric shapes, distinct borders, unique typography styling, and background colors.
+
+Generate a JSON object with:
+1. "name": A creative name for the style.
+2. "description": A short description of the layout and patterns.
+3. "gradient": A Tailwind CSS gradient string for a fallback sidebar background (e.g., "from-slate-800 to-slate-600").
+4. "accent": A HEX color for the primary accent color.
+5. "custom_css": A raw CSS string that precisely mimics the patterns and styling seen in the image. Target these specific classes:
+   - \`.resume-page\` (the main wrapper, e.g., for global fonts or outer backgrounds)
+   - \`.resume-grid\` (the two-column container, e.g., for borders or shadows)
+   - \`.resume-sidebar\` (the left column, e.g., for complex background patterns like wavy lines using radial-gradient or SVG backgrounds)
+   - \`.resume-section-header\` (e.g., for border-bottom styles, colors)
+   - \`.resume-section-header\` (e.g., for border-bottom styles, colors)
+   - \`.resume-section-header--dark\` (headers in the sidebar)
+
+CRITICAL RULES FOR CUSTOM CSS:
+1. You MUST append !important to EVERY single CSS rule (e.g., \`background-color: #333 !important;\`) to override existing Tailwind utility classes.
+2. Use highly specific selectors, such as \`.resume-grid .resume-sidebar\` instead of just \`.resume-sidebar\`.
+3. Recreate exact patterns: If you see wavy lines, dots, or geometric shapes, use advanced CSS (like \`repeating-radial-gradient\`, \`repeating-linear-gradient\`, or SVG \`url('data:image/svg+xml,...')\`) applied to the background of \`.resume-sidebar\` or \`.resume-page\`. DO NOT ignore patterns!
+4. Match colors exactly based on the image.
+
+Respond ONLY with valid JSON in this exact shape:
+{
+  "name": "string",
+  "description": "string",
+  "gradient": "string",
+  "accent": "string",
+  "custom_css": "string"
+}`;
+
+  const response = await fetch(GEMINI_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      contents: [{
+        parts: [
+          { text: prompt },
+          { inlineData: { mimeType: 'image/jpeg', data: base64String } }
+        ]
+      }],
+      generationConfig: {
+        temperature: 0.2,
+        maxOutputTokens: 2048,
+        responseMimeType: 'application/json',
+      },
+    }),
+  });
+
+  if (!response.ok) {
+    const errText = await response.text();
+    throw new Error(`Gemini Vision API error (${response.status}): ${errText}`);
+  }
+
+  const data = await response.json();
+  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+
+  if (!text) {
+    throw new Error('Gemini returned empty response for template extraction');
+  }
+
+  const cleaned = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+  const templateInfo = JSON.parse(cleaned);
+  
+  // Add an icon randomly or fixed, and a generated ID
+  return {
+    ...templateInfo,
+    id: 'scanned-' + Date.now(),
+    icon: 'Layout'
+  };
+}

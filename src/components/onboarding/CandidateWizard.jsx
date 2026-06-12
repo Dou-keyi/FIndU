@@ -128,6 +128,29 @@ export default function CandidateWizard() {
       if (resumePath === 'template' && selectedTemplate) {
         profileUpdates.resume_template = selectedTemplate;
       }
+      
+      // If a scanned template was extracted during upload, save it and set it
+      if (resumePath === 'upload' && resumeData?.scannedTemplate) {
+        const t = resumeData.scannedTemplate;
+        const { error: tmplError } = await supabase
+          .from('resume_templates')
+          .insert({
+            id: t.id,
+            name: t.name || 'Scanned Template',
+            description: t.description || 'Custom template from upload',
+            gradient: t.gradient || 'from-gray-800 to-gray-600',
+            accent: t.accent || '#4b5563',
+            custom_css: t.custom_css || null,
+            icon: t.icon || 'Layout',
+            candidate_id: user.id
+          });
+        
+        if (!tmplError) {
+          profileUpdates.resume_template = t.id;
+        } else {
+          console.warn('Failed to save scanned template to DB:', tmplError);
+        }
+      }
 
       const { error: profileError } = await supabase
         .from('profiles')

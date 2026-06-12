@@ -284,6 +284,66 @@
   line-height: 1.6;
 }
 
+/* ═══════════════════════════════════════════════
+   Creative Layout — Magazine-style cards
+   ═══════════════════════════════════════════════ */
+
+.creative-card {
+  background: white;
+  border-left: 4px solid #7c3aed;
+  border-radius: 0 12px 12px 0;
+  padding: 20px 24px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.03);
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.creative-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+}
+
+.creative-skill-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border-radius: 9999px;
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid;
+  transition: transform 0.15s ease;
+}
+
+.creative-skill-pill:hover {
+  transform: translateY(-1px);
+}
+
+/* ═══════════════════════════════════════════════
+   Minimal Layout — Clean typographic
+   ═══════════════════════════════════════════════ */
+
+.minimal-rule {
+  height: 1px;
+  background-color: #e5e7eb;
+  margin-bottom: 20px;
+}
+
+.minimal-section-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: #9ca3af;
+}
+
+.minimal-contact {
+  font-size: 12px;
+  color: #9ca3af;
+  letter-spacing: 0.02em;
+}
+
+.minimal-section {
+  margin-bottom: 28px;
+}
+
 /* Print: optimise for A4 PDF export
    Goal: the printed PDF should look EXACTLY like the on-screen resume
    with zero browser chrome, nav bars, or extra spacing.
@@ -367,7 +427,7 @@
     border: none !important;
   }
 
-  /* ── 8. Resume grid — the two-column document ── */
+  /* ── 8. Professional: Resume grid — the two-column document ── */
   .resume-grid {
     display: grid !important;
     grid-template-columns: 280px 1fr !important;
@@ -378,18 +438,40 @@
     border: none !important;
   }
 
-  /* ── 9. Sidebar — full page height with preserved colours ── */
+  /* ── 9. Professional: Sidebar — full page height with preserved colours ── */
   .resume-sidebar {
     min-height: 100vh !important;
     padding: 32px 24px !important;
   }
 
-  /* ── 10. Right content column ── */
+  /* ── 10. Professional: Right content column ── */
   .resume-grid > div:last-child {
     padding: 32px !important;
   }
 
-  /* ── 11. Prevent page breaks inside sections ── */
+  /* ── 11. Creative layout print ── */
+  .creative-resume {
+    border-radius: 0 !important;
+    box-shadow: none !important;
+  }
+
+  .creative-card {
+    box-shadow: none !important;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .creative-header {
+    padding: 32px !important;
+  }
+
+  /* ── 12. Minimal layout print ── */
+  .minimal-resume {
+    border-radius: 0 !important;
+    box-shadow: none !important;
+  }
+
+  /* ── 13. Prevent page breaks inside sections ── */
   .resume-section {
     break-inside: avoid;
     page-break-inside: avoid;
@@ -400,7 +482,12 @@
     page-break-inside: avoid;
   }
 
-  /* ── 12. Hide the ring/shadow on avatar for cleaner print ── */
+  .minimal-section {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  /* ── 14. Hide the ring/shadow on avatar for cleaner print ── */
   .resume-sidebar img,
   .resume-sidebar div[style] {
     box-shadow: none !important;
