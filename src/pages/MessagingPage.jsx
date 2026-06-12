@@ -1,6 +1,6 @@
 // MessagingPage.jsx — real-time messaging between matched candidates and employers
 import React, { useState, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../hooks/useAuth';
 import { getMyThreads, getMyRequests, getMySentRequests, respondToRequest } from '../lib/messagingData';
@@ -12,11 +12,13 @@ import ChatThread from '../components/messaging/ChatThread';
 export default function MessagingPage() {
   const { user, profile } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
   const role = profile?.role || 'candidate';
 
   const [activeTab, setActiveTab] = useState('chats'); // 'requests' | 'chats'
   const [view, setView] = useState('list'); // 'list' | 'thread'
   const [activeThreadId, setActiveThreadId] = useState(null);
+  const [draftContext, setDraftContext] = useState(null);
 
   const [threads, setThreads] = useState([]);
   const [requests, setRequests] = useState([]);
@@ -37,6 +39,7 @@ export default function MessagingPage() {
     const sentReqThreads = sentReqsData.map(req => ({
       id: `req_${req.id}`,
       isRequest: true,
+      requestId: req.id,
       match: {
         job: req.job,
         employer: role === 'employer' ? profile : req.recipient,
@@ -76,10 +79,29 @@ export default function MessagingPage() {
     if (location.state?.openThreadId) {
       setActiveThreadId(location.state.openThreadId);
       setView('thread');
-      // Clean up state so we don't reopen on reload
+      window.history.replaceState({}, document.title);
+    } else if (location.state?.newConversation && !loadingThreads) {
+      const conv = location.state.newConversation;
+      const targetId = conv.targetProfile.id;
+      
+      const foundThread = threads.find(t => {
+        if (!t.match) return false;
+        const eId = t.match.employer?.id || t.match.employer_id;
+        const cId = t.match.candidate?.id || t.match.candidate_id;
+        return (eId === targetId || cId === targetId) && t.match.job?.id === conv.jobId;
+      });
+
+      if (foundThread) {
+        setActiveThreadId(foundThread.id);
+        setView('thread');
+      } else {
+        setDraftContext(conv);
+        setActiveThreadId('new_draft');
+        setView('thread');
+      }
       window.history.replaceState({}, document.title);
     }
-  }, [location.state]);
+  }, [location.state, loadingThreads, threads]);
 
   const unreadThreadsCount = threads.filter((t) => {
     const msgs = t.messages || [];
@@ -96,7 +118,12 @@ export default function MessagingPage() {
   const handleBackToList = () => {
     setView('list');
     setActiveThreadId(null);
+    setDraftContext(null);
     loadData(); // Refresh threads to update unread status
+    
+    if (location.state) {
+      navigate(location.pathname, { replace: true, state: {} });
+    }
   };
 
   const handleAcceptRequest = async (req) => {
@@ -134,7 +161,10 @@ export default function MessagingPage() {
   const activeThread = threads.find((t) => t.id === activeThreadId);
   let otherParty = null;
   let jobContext = null;
-  if (activeThread?.match) {
+  if (activeThreadId === 'new_draft' && draftContext) {
+    otherParty = draftContext.targetProfile;
+    jobContext = draftContext.jobTitle;
+  } else if (activeThread?.match) {
     otherParty = role === 'candidate' ? activeThread.match.employer : activeThread.match.candidate;
     const job = activeThread.match.job;
     jobContext = job ? `${job.title}${job.company?.name ? ` · ${job.company.name}` : ''}` : null;
@@ -243,12 +273,29 @@ export default function MessagingPage() {
             <ChatThread
               threadId={activeThreadId}
               isRequest={activeThread?.isRequest}
+              requestId={activeThread?.requestId}
+              isDraft={activeThreadId === 'new_draft'}
               initialMessages={activeThread?.isRequest ? activeThread.messages : null}
               otherParty={otherParty}
               jobContext={jobContext}
               userId={user?.id}
               onBack={handleBackToList}
               onThreadUpdate={loadData}
+              onSendDraft={async (content) => {
+                const { supabase } = await import('../lib/supabase');
+                const { data, error } = await supabase.from('message_requests').insert({
+                  sender_id: user?.id,
+                  recipient_id: draftContext.targetProfile.id,
+                  job_id: draftContext.jobId || null,
+                  intro_message: content.trim(),
+                  status: 'pending',
+                }).select().single();
+                if (error) throw error;
+                toast({ title: 'Request sent', variant: 'success' });
+                await loadData();
+                setDraftContext(null);
+                setActiveThreadId(`req_${data.id}`);
+              }}
             />
           </motion.div>
         )}

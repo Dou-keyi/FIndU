@@ -220,12 +220,21 @@ export default function TrackingPage() {
                       app={app} 
                       isEmployer={isEmployer}
                       onStatusChange={handleStatusChange}
-                      onViewPortfolio={(candidateId) => navigate(`/portfolio/${candidateId}`)}
-                      onMessage={(candidateId, jobId, jobTitle) => {
-                        // For prototype: we just navigate to messaging
-                        // The actual deep linking creates the thread if it doesn't exist
-                        // based on the MutualMatchModal logic
-                        navigate('/messaging');
+                      onViewPortfolio={(id) => navigate(isEmployer ? `/portfolio/${id}` : `/company/${id}`)}
+                      onMessage={(targetUserId, jobId, jobTitle) => {
+                        const targetProfile = isEmployer 
+                          ? app.candidate 
+                          : {
+                              id: targetUserId,
+                              full_name: app.job?.company?.name || 'Company',
+                              avatar_url: app.job?.company?.logo_url,
+                              headline: 'Employer',
+                            };
+                        navigate('/messaging', { 
+                          state: { 
+                            newConversation: { targetProfile, jobId, jobTitle } 
+                          } 
+                        });
                       }}
                     />
                   </motion.div>

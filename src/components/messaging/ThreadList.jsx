@@ -81,14 +81,9 @@ export default function ThreadList({ threads, userId, userRole, onSelectThread, 
 
             {/* Content */}
             <div className="flex-1 min-w-0">
-              <div className="flex items-center justify-between gap-2">
-                <p className={`text-sm truncate ${hasUnseen ? 'font-bold text-slate-900' : 'font-semibold text-slate-700'}`}>
-                  {otherParty?.full_name || 'Unknown'}
-                </p>
-                <span className={`text-[10px] flex-shrink-0 ${hasUnseen ? 'text-brand font-semibold' : 'text-slate-400'}`}>
-                  {latestMsg ? formatRelativeTime(latestMsg.sent_at) : ''}
-                </span>
-              </div>
+              <p className={`text-sm truncate ${hasUnseen ? 'font-bold text-slate-900' : 'font-semibold text-slate-700'}`}>
+                {otherParty?.full_name || 'Unknown'}
+              </p>
 
               {/* Job context */}
               {job && (
@@ -103,6 +98,18 @@ export default function ThreadList({ threads, userId, userRole, onSelectThread, 
                   {latestMsg.sender_id === userId ? 'You: ' : ''}
                   {latestMsg.content}
                 </p>
+              )}
+            </div>
+
+            {/* Right Column */}
+            <div className="flex flex-col items-end gap-1.5 flex-shrink-0 ml-2">
+              <span className={`text-[10px] mt-0.5 ${hasUnseen ? 'text-brand font-semibold' : 'text-slate-400'}`}>
+                {latestMsg ? formatRelativeTime(latestMsg.sent_at) : ''}
+              </span>
+              {thread.isRequest && (
+                <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-widest text-amber-600 bg-amber-50 border border-amber-200/60 shadow-sm">
+                  Pending
+                </span>
               )}
             </div>
           </motion.button>

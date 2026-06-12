@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Search, MapPin, DollarSign, Loader2, Briefcase, Users, FileText } from 'lucide-react';
+import { Search, MapPin, DollarSign, Loader2, Briefcase, Users, FileText, ChevronLeft, ChevronRight } from 'lucide-react';
 import { searchJobs, searchCandidates } from '../../lib/feedData';
 import FeedJobCard from '../feed/FeedJobCard';
 import FeedCandidateCard from '../feed/FeedCandidateCard';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, animate } from 'framer-motion';
 
 function SearchTabContent({
   mode,
@@ -17,8 +17,52 @@ function SearchTabContent({
   profile,
   workTypes
 }) {
+  const itemsPerPage = 15;
+  const [currentPage, setCurrentPage] = useState(1);
+  const gridRef = React.useRef(null);
+  const [gridMinHeight, setGridMinHeight] = useState('auto');
+
+  // Reset page when results or filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [results, filters]);
+
+  const totalPages = Math.ceil(results.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedResults = results.slice(startIndex, startIndex + itemsPerPage);
+
+  const handlePageChange = (page) => {
+    // 1. Lock the grid height to prevent browser scroll snaps
+    if (gridRef.current) {
+      setGridMinHeight(`${gridRef.current.offsetHeight}px`);
+    }
+    
+    // 2. Calculate target scroll BEFORE layout shifts
+    const section = document.getElementById('results-top');
+    const startY = window.scrollY;
+    let targetY = startY;
+    if (section) {
+      targetY = section.getBoundingClientRect().top + startY - 80;
+    }
+
+    // 3. Change page immediately (no setTimeout delay)
+    setCurrentPage(page);
+
+    // 4. Premium smooth scroll via Framer Motion (bypasses browser lag/cancellations)
+    animate(startY, targetY, {
+      duration: 0.6,
+      ease: [0.22, 1, 0.36, 1], // Buttery smooth custom easing curve
+      onUpdate: (val) => window.scrollTo(0, val)
+    });
+
+    // 5. Release height lock safely after animations
+    setTimeout(() => {
+      setGridMinHeight('auto');
+    }, 600);
+  };
+
   return (
-    <div className="w-full">
+    <div className="w-full" id="search-tab-content">
       {/* Search & Filters Container */}
       <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-6 md:p-8 mb-10 shadow-2xl">
         <div className={`grid grid-cols-1 ${mode === 'jobs' ? 'md:grid-cols-3' : 'md:grid-cols-2'} gap-4 mb-6`}>
@@ -103,7 +147,7 @@ function SearchTabContent({
       </div>
 
       {/* Results */}
-      <div>
+      <div id="results-top" className="scroll-mt-24">
         <div className="flex justify-between items-center mb-6">
           <h3 className="text-xl font-bold text-white">
             {loading ? 'Searching...' : `${results.length} Results`}
@@ -111,7 +155,11 @@ function SearchTabContent({
           {loading && <Loader2 className="w-5 h-5 text-brand animate-spin" />}
         </div>
 
-        <div className="grid grid-cols-1 gap-4">
+        <div 
+          ref={gridRef}
+          className="grid grid-cols-1 gap-4 relative"
+          style={{ minHeight: gridMinHeight }}
+        >
           <AnimatePresence mode="popLayout">
             {!loading && results.length === 0 ? (
               <motion.div
@@ -140,7 +188,7 @@ function SearchTabContent({
                 </button>
               </motion.div>
             ) : (
-              results.map((item, index) => (
+              paginatedResults.map((item, index) => (
                 <motion.div
                   key={item.id}
                   initial={{ opacity: 0, y: 20 }}
@@ -178,6 +226,67 @@ function SearchTabContent({
             )}
           </AnimatePresence>
         </div>
+
+        {/* Beautiful Glassmorphism Pagination */}
+        {!loading && totalPages > 1 && (
+          <motion.div 
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex justify-center items-center mt-12 gap-3"
+          >
+            <button
+              onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
+              disabled={currentPage === 1}
+              className="group p-3 rounded-2xl bg-white/5 border border-white/10 text-white/60 hover:bg-white/10 hover:text-white disabled:opacity-30 disabled:hover:bg-white/5 disabled:cursor-not-allowed transition-all shadow-lg backdrop-blur-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+              aria-label="Previous Page"
+            >
+              <ChevronLeft className="w-5 h-5 group-hover:-translate-x-0.5 transition-transform" />
+            </button>
+            
+            <div className="flex items-center gap-1.5 bg-white/5 border border-white/10 rounded-2xl p-1.5 backdrop-blur-md shadow-lg">
+              {Array.from({ length: totalPages }).map((_, i) => {
+                const page = i + 1;
+                const isActive = currentPage === page;
+                
+                // Truncation logic: first, last, current, and +/- 1
+                if (
+                  page === 1 || 
+                  page === totalPages || 
+                  (page >= currentPage - 1 && page <= currentPage + 1)
+                ) {
+                  return (
+                    <button
+                      key={page}
+                      onClick={() => handlePageChange(page)}
+                      className={`min-w-[40px] h-10 flex items-center justify-center rounded-xl text-sm font-bold transition-all px-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand ${
+                        isActive 
+                          ? 'bg-brand text-white shadow-[0_0_20px_rgba(59,130,246,0.6)]' 
+                          : 'text-white/60 hover:text-white hover:bg-white/10'
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  );
+                } else if (
+                  page === currentPage - 2 || 
+                  page === currentPage + 2
+                ) {
+                  return <span key={page} className="text-white/30 px-2 font-bold tracking-widest">...</span>;
+                }
+                return null;
+              })}
+            </div>
+
+            <button
+              onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
+              disabled={currentPage === totalPages}
+              className="group p-3 rounded-2xl bg-white/5 border border-white/10 text-white/60 hover:bg-white/10 hover:text-white disabled:opacity-30 disabled:hover:bg-white/5 disabled:cursor-not-allowed transition-all shadow-lg backdrop-blur-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+              aria-label="Next Page"
+            >
+              <ChevronRight className="w-5 h-5 group-hover:translate-x-0.5 transition-transform" />
+            </button>
+          </motion.div>
+        )}
       </div>
     </div>
   );

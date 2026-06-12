@@ -212,6 +212,23 @@ export default function ApplicationCard({ app, isEmployer, onStatusChange, onVie
               </AnimatePresence>
             </div>
           )}
+
+          {/* Actions */}
+          <div className="mt-4 flex gap-2">
+            <button
+              onClick={() => onViewPortfolio?.(company?.id)}
+              className="flex-1 py-2 px-3 rounded-lg border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors flex items-center justify-center gap-1.5"
+            >
+              View Company
+              <ExternalLink className="w-3 h-3" />
+            </button>
+            <button
+              onClick={() => onMessage?.(job?.posted_by, job?.id, job?.title)}
+              className="flex-1 py-2 px-3 rounded-lg bg-brand text-white text-xs font-semibold hover:bg-brand-dark transition-colors shadow-sm"
+            >
+              Message
+            </button>
+          </div>
         </div>
       </div>
     </div>

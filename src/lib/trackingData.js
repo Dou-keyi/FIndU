@@ -7,7 +7,7 @@ export async function getCandidateApplications(userId) {
     .select(`
       id, status, applied_at, ai_context,
       job:jobs!job_id(
-        id, title, salary_min, salary_max, currency, work_type, experience_level,
+        id, title, salary_min, salary_max, currency, work_type, experience_level, posted_by,
         company:companies(id, name, logo_url)
       )
     `)

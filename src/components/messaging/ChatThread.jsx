@@ -43,7 +43,7 @@ function MessageBubble({ message, isMine, isLast }) {
   );
 }
 
-export default function ChatThread({ threadId, isRequest, initialMessages, otherParty, jobContext, userId, onBack, onThreadUpdate }) {
+export default function ChatThread({ threadId, isRequest, isDraft, initialMessages, otherParty, jobContext, userId, onBack, onThreadUpdate, onSendDraft, requestId }) {
   const [messages, setMessages] = useState([]);
   const [inputValue, setInputValue] = useState('');
   const [sending, setSending] = useState(false);
@@ -61,9 +61,14 @@ export default function ChatThread({ threadId, isRequest, initialMessages, other
 
     async function loadMessages() {
       setInitialLoading(true);
-      if (isRequest) {
+      if (isRequest || isDraft) {
         if (mounted) {
-          setMessages(initialMessages || []);
+          const msgs = initialMessages ? initialMessages.flatMap(m => m.content.split('\n\n').map((c, i) => ({
+            ...m,
+            id: `${m.id}-${i}`,
+            content: c
+          }))) : [];
+          setMessages(msgs);
           setInitialLoading(false);
         }
         return;
@@ -81,7 +86,7 @@ export default function ChatThread({ threadId, isRequest, initialMessages, other
 
     loadMessages();
 
-    if (isRequest) return;
+    if (isRequest || isDraft) return;
 
     // Subscribe to new messages
     const channel = supabase
@@ -148,6 +153,29 @@ export default function ChatThread({ threadId, isRequest, initialMessages, other
     setMessages((prev) => [...prev, optimisticMsg]);
 
     try {
+      if (isDraft) {
+        await onSendDraft?.(content);
+        return;
+      }
+
+      if (isRequest && requestId) {
+        const { supabase } = await import('../../lib/supabase');
+        const { data: reqData, error: fetchErr } = await supabase.from('message_requests').select('intro_message').eq('id', requestId).single();
+        if (fetchErr) throw fetchErr;
+        
+        if (reqData) {
+          const updated = reqData.intro_message + '\n\n' + content;
+          const { error: updateErr } = await supabase.from('message_requests').update({ intro_message: updated }).eq('id', requestId);
+          if (updateErr) throw updateErr;
+
+          setMessages((prev) =>
+            prev.map((m) => (m.id === optimisticMsg.id ? { ...m, id: `req-msg-${Date.now()}` } : m))
+          );
+          onThreadUpdate?.();
+        }
+        return;
+      }
+
       const { data, error } = await sendMessage(threadId, userId, content);
       if (error) throw error;
 
@@ -243,12 +271,12 @@ export default function ChatThread({ threadId, isRequest, initialMessages, other
 
       {/* Input bar */}
       <div className="flex-shrink-0 bg-white border-t border-slate-200 px-4 py-3">
-        {isRequest ? (
-          <div className="flex items-center justify-center p-3 text-sm text-slate-500 bg-slate-50 rounded-xl border border-slate-200">
-            Waiting for {otherParty?.full_name || 'candidate'} to accept your request.
+        {isRequest && !isDraft && (
+          <div className="flex items-center justify-center p-2 mb-3 text-xs text-red-600 bg-red-50 rounded-lg border border-red-200">
+            Waiting for {otherParty?.full_name || 'candidate'} to accept your request. You can still send messages.
           </div>
-        ) : (
-          <div className="flex items-end gap-2">
+        )}
+        <div className="flex items-end gap-2">
             <textarea
               ref={textareaRef}
               value={inputValue}
@@ -272,7 +300,6 @@ export default function ChatThread({ threadId, isRequest, initialMessages, other
               <Send className="w-4 h-4" />
             </button>
           </div>
-        )}
       </div>
     </div>
   );

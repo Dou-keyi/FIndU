@@ -50,7 +50,7 @@ export default function RequestsList({ requests, onAccept, onDecline, loading })
               className="border-b border-slate-100 last:border-b-0"
             >
               <div className="px-4 py-4">
-                <div className="flex gap-3">
+                <div className="flex items-center gap-3">
                   {/* Avatar */}
                   <div
                     className="w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center text-sm font-semibold"
@@ -65,16 +65,11 @@ export default function RequestsList({ requests, onAccept, onDecline, loading })
 
                   {/* Content */}
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <p className="text-sm font-semibold text-slate-800 truncate">
-                          {sender?.full_name || 'Unknown'}
-                        </p>
-                        <p className="text-[11px] text-slate-400 truncate">{sender?.headline}</p>
-                      </div>
-                      <span className="text-[10px] text-slate-400 flex-shrink-0 mt-0.5">
-                        {formatRelativeTime(req.created_at)}
-                      </span>
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-slate-800 truncate">
+                        {sender?.full_name || 'Unknown'}
+                      </p>
+                      <p className="text-[11px] text-slate-400 truncate">{sender?.headline}</p>
                     </div>
 
                     {/* Job context */}
@@ -86,8 +81,13 @@ export default function RequestsList({ requests, onAccept, onDecline, loading })
                     <p className="text-xs text-slate-500 mt-1.5 line-clamp-2 leading-relaxed">
                       "{req.intro_message}"
                     </p>
+                  </div>
 
-                    {/* Actions */}
+                  {/* Right Column: Time & Actions */}
+                  <div className="flex flex-col items-end justify-between self-stretch flex-shrink-0 ml-2 py-1">
+                    <span className="text-[10px] text-slate-400 mt-0.5">
+                      {formatRelativeTime(req.created_at)}
+                    </span>
                     <div className="flex gap-2 mt-3">
                       <button
                         onClick={() => onAccept(req)}

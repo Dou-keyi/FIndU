@@ -56,7 +56,7 @@ export default function GlobePage() {
           if (profile?.id) {
             const { data: comp } = await supabase.from('companies').select('id').eq('owner_id', profile.id).limit(1).maybeSingle();
             if (comp) {
-              const { data: eJobs } = await supabase.from('jobs').select('id, title, company:companies(name)').eq('company_id', comp.id).eq('status', 'open');
+              const { data: eJobs } = await supabase.from('jobs').select('id, title, company_id, company:companies(name)').eq('company_id', comp.id).eq('status', 'open');
               setEmployerJobs(eJobs || []);
             }
           }
