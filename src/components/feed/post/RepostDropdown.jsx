@@ -5,6 +5,7 @@ import { Repeat2, Quote, Send, Link2, Share2 } from 'lucide-react';
 import { supabase } from '../../../lib/supabase';
 import { useAuth } from '../../../hooks/useAuth';
 import { useFeedStore } from '../../../store/feedStore';
+import { createPost } from '../../../lib/feedData';
 import toast from 'react-hot-toast';
 
 export default function RepostDropdown({ post, repostCount = 0 }) {
@@ -32,14 +33,26 @@ export default function RepostDropdown({ post, repostCount = 0 }) {
       return;
     }
     try {
-      const { error } = await supabase.from('reposts').insert({
-        post_id: post.id,
-        user_id: user.id,
-      });
-      if (error && error.code !== '23505') throw error;
+      const role = user?.role || 'candidate';
+      const companyId = post.author_id === user.id ? post.company_id : null; // Keep company_id if reposting own company post
+      const newPost = await createPost(
+        user.id,
+        '', // Empty content for instant repost
+        [],
+        role === 'employer' ? 'company' : 'candidate',
+        companyId,
+        null,
+        post.id // quotedPostId
+      );
+      if (!newPost) throw new Error('Failed to create repost');
+      // Supabase insert select sometimes fails to fully populate deep nested joins,
+      // but we already have the fully populated quoted post!
+      newPost.quoted_post = post;
+      useFeedStore.getState().prependPosts([newPost]);
       toast.success('Reposted!');
     } catch (err) {
       console.error('Failed to repost:', err);
+      toast.error('Failed to repost');
     }
     setOpen(false);
   };

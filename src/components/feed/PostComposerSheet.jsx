@@ -21,7 +21,14 @@ export default function PostComposerSheet({ isOpen, onClose, onPostCreated }) {
 
   const role = profile?.role || 'candidate';
   const charCount = content.length;
-  const canPost = content.trim().length > 0 && !posting;
+  // If quoting, we can post even without content
+  const canPost = (content.trim().length > 0 || window.__quotedPost) && !posting;
+
+  // Clear quoted post when closing
+  const handleClose = () => {
+    window.__quotedPost = null;
+    onClose();
+  };
 
   const addTag = useCallback(() => {
     const clean = tagInput.replace(/^#/, '').trim().toLowerCase();
@@ -66,10 +73,15 @@ export default function PostComposerSheet({ isOpen, onClose, onPostCreated }) {
         content.trim(),
         hashtags,
         role === 'employer' ? 'company' : 'candidate',
-        companyId
+        companyId,
+        null, // jobId
+        window.__quotedPost?.id || null // quotedPostId
       );
 
       if (newPost) {
+        if (window.__quotedPost) {
+          newPost.quoted_post = window.__quotedPost;
+        }
         onPostCreated?.(newPost);
 
         // Candidate only: trigger AI portfolio suggestion
@@ -91,7 +103,7 @@ export default function PostComposerSheet({ isOpen, onClose, onPostCreated }) {
         setContent('');
         setHashtags([]);
         setTagInput('');
-        onClose();
+        handleClose();
       }
     } catch (err) {
       console.error('Failed to submit post:', err);
@@ -110,7 +122,7 @@ export default function PostComposerSheet({ isOpen, onClose, onPostCreated }) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            onClick={onClose}
+            onClick={handleClose}
           />
 
           {/* Sheet */}
@@ -130,7 +142,7 @@ export default function PostComposerSheet({ isOpen, onClose, onPostCreated }) {
             <div className="flex items-center justify-between px-5 pb-3">
               <h3 className="text-base font-semibold text-gray-900">New Post</h3>
               <button
-                onClick={onClose}
+                onClick={handleClose}
                 className="p-1.5 rounded-full hover:bg-gray-100 transition-colors"
                 aria-label="Close"
               >
@@ -142,7 +154,7 @@ export default function PostComposerSheet({ isOpen, onClose, onPostCreated }) {
               {/* Textarea */}
               <textarea
                 className="w-full min-h-[120px] resize-none rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand transition-all"
-                placeholder="What's on your mind?"
+                placeholder={window.__quotedPost ? "Add a comment..." : "What's on your mind?"}
                 value={content}
                 onChange={(e) => {
                   if (e.target.value.length <= MAX_CHARS) {
@@ -151,6 +163,17 @@ export default function PostComposerSheet({ isOpen, onClose, onPostCreated }) {
                 }}
                 rows={3}
               />
+
+              {window.__quotedPost && (
+                <div className="mt-3 mb-2 p-3 border border-gray-200 rounded-xl bg-gray-50 flex flex-col gap-1">
+                  <p className="text-xs font-semibold text-gray-700">
+                    Replying to {window.__quotedPost.author?.full_name}
+                  </p>
+                  <p className="text-xs text-gray-500 line-clamp-2">
+                    {window.__quotedPost.content || 'Attached post'}
+                  </p>
+                </div>
+              )}
 
               {/* Char count */}
               <div className="flex justify-end mt-1 mb-3">
