@@ -14,6 +14,7 @@ import MessageRequestSheet from '../components/messaging/MessageRequestSheet';
 import ProfessionalLayout from '../components/portfolio/layouts/ProfessionalLayout';
 import CreativeLayout from '../components/portfolio/layouts/CreativeLayout';
 import MinimalLayout from '../components/portfolio/layouts/MinimalLayout';
+import { ALL_SECTIONS } from '../components/portfolio/layouts/SharedComponents';
 
 
 /* ═══════════════════════════════════════════════════════
@@ -29,6 +30,7 @@ export default function PortfolioPage() {
   const [portfolioItems, setPortfolioItems] = useState([]);
   const [templates, setTemplates] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [sectionOrder, setSectionOrder] = useState(ALL_SECTIONS);
 
   // Template Switcher state
   const [showTemplateSwitcher, setShowTemplateSwitcher] = useState(false);
@@ -148,6 +150,16 @@ export default function PortfolioPage() {
         setCustomHeaderColor1(headerColor);
         setCustomHeaderColor2('');
       }
+
+      if (targetProfile.resume_section_order && Array.isArray(targetProfile.resume_section_order)) {
+        // Only use valid sections from ALL_SECTIONS
+        const validOrder = targetProfile.resume_section_order.filter(s => ALL_SECTIONS.includes(s));
+        // Add any missing sections
+        const missing = ALL_SECTIONS.filter(s => !validOrder.includes(s));
+        setSectionOrder([...validOrder, ...missing]);
+      } else {
+        setSectionOrder(ALL_SECTIONS);
+      }
     }
   }, [targetProfile]);
 
@@ -248,6 +260,19 @@ export default function PortfolioPage() {
         navigate('/messaging', { state: { openThreadId: matchData.message_threads[0].id } });
       } else { setShowRequestSheet(true); }
     } catch { setShowRequestSheet(true); }
+  };
+
+  const saveSectionOrderTimeout = useRef(null);
+  const handleSaveSectionOrder = (newOrder) => {
+    if (!isOwn) return;
+    if (saveSectionOrderTimeout.current) clearTimeout(saveSectionOrderTimeout.current);
+    saveSectionOrderTimeout.current = setTimeout(async () => {
+      try {
+        await supabase.from('profiles').update({ resume_section_order: newOrder }).eq('id', user.id);
+      } catch (err) {
+        console.error('Failed to save section order:', err);
+      }
+    }, 500);
   };
 
   /* ─── Resume import handler ─── */
@@ -602,7 +627,8 @@ export default function PortfolioPage() {
                 savingProfile, handleSaveProfile,
                 avatarInputRef, uploadingAvatar, handleAvatarUpload,
                 handleSaveItem, handleDeleteItem,
-                initials, avatarColor, navigate
+                initials, avatarColor, navigate,
+                sectionOrder, setSectionOrder, handleSaveSectionOrder
               };
 
               if (isScanned || templateId === 'professional' || !templateId) {

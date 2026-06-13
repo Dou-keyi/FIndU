@@ -1,7 +1,7 @@
 // SharedComponents.jsx — Reusable sub-components shared across all resume layouts
 import { useState } from 'react';
 import {
-  Plus, Loader2, Pencil, Trash2, X, Sparkles,
+  Plus, Loader2, Pencil, Trash2, X, Sparkles, GripHorizontal,
   GraduationCap, Briefcase, Award, ShieldCheck, Languages,
   Heart, User, FileText
 } from 'lucide-react';
@@ -16,14 +16,15 @@ export const SECTION_META = {
   certification: { label: 'Certifications',      icon: ShieldCheck },
   language:      { label: 'Languages',           icon: Languages },
   hobby:         { label: 'Hobbies',             icon: Heart },
+  skills:        { label: 'Skills',              icon: Sparkles },
 };
 
 // Sections displayed in the dark left sidebar (Professional layout)
-export const LEFT_SECTIONS  = ['language', 'certification'];
+export const LEFT_SECTIONS  = ['skills', 'language', 'certification'];
 // Sections displayed in the white right content area
-export const RIGHT_SECTIONS = ['summary', 'education', 'experience', 'project', 'achievement'];
+export const RIGHT_SECTIONS = ['summary', 'education', 'experience', 'project', 'achievement', 'hobby'];
 // All sections in order
-export const ALL_SECTIONS = ['summary', 'education', 'experience', 'project', 'achievement', 'certification', 'language', 'hobby'];
+export const ALL_SECTIONS = ['summary', 'education', 'experience', 'project', 'achievement', 'skills', 'certification', 'language', 'hobby'];
 
 /* ─── Inline edit form (compact, for adding/editing items) ─── */
 export function InlineItemForm({ type, initialData, onSave, onCancel }) {
@@ -124,7 +125,7 @@ export function InlineItemForm({ type, initialData, onSave, onCancel }) {
 }
 
 /* ─── Section Header with accent underline ─── */
-export function ResumeSectionHeader({ type, isOwn, onAdd, dark = false, accentColor = null }) {
+export function ResumeSectionHeader({ type, isOwn, onAdd, dark = false, accentColor = null, dragControls = null }) {
   const meta = SECTION_META[type];
   if (!meta) return null;
 
@@ -132,9 +133,21 @@ export function ResumeSectionHeader({ type, isOwn, onAdd, dark = false, accentCo
     <div className={`resume-section-header ${dark ? 'resume-section-header--dark' : ''}`}
       style={accentColor ? { borderBottomColor: accentColor } : undefined}>
       <div className="flex items-center justify-between">
-        <h3 className={`text-sm font-extrabold uppercase tracking-widest ${dark ? 'text-white' : 'text-gray-900'}`}>
-          {meta.label}
-        </h3>
+        <div className="flex items-center gap-2">
+          {isOwn && dragControls && (
+            <div
+              onPointerDown={(e) => dragControls.start(e)}
+              style={{ touchAction: 'none' }}
+              className={`cursor-grab active:cursor-grabbing p-1 -ml-1 rounded transition-colors no-print ${dark ? 'hover:bg-white/10 text-white/40' : 'hover:bg-gray-100 text-gray-400'}`}
+              title="Hold and drag to reorder"
+            >
+              <GripHorizontal className="w-4 h-4" />
+            </div>
+          )}
+          <h3 className={`text-sm font-extrabold uppercase tracking-widest ${dark ? 'text-white' : 'text-gray-900'}`}>
+            {meta.label}
+          </h3>
+        </div>
         {isOwn && (
           <button onClick={onAdd} className={`p-1 rounded-full transition-colors no-print ${dark ? 'hover:bg-white/10 text-white/40 hover:text-white' : 'hover:bg-gray-100 text-gray-400 hover:text-brand'}`}>
             <Plus className="w-3.5 h-3.5" />

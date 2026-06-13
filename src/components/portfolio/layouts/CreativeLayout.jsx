@@ -4,11 +4,37 @@ import {
   Loader2, Pencil, Trash2, Check, X, Camera, Plus, Sparkles,
   Mail, Phone, MapPin
 } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { motion, Reorder, useDragControls } from 'framer-motion';
 import {
   SECTION_META, ALL_SECTIONS,
   InlineItemForm, ResumeSectionHeader, ResumeItem
 } from './SharedComponents';
+
+const DraggableSection = ({ type, renderContent }) => {
+  const dragControls = useDragControls();
+  return (
+    <Reorder.Item 
+      value={type} 
+      id={type} 
+      dragListener={false} 
+      dragControls={dragControls} 
+      className="relative z-0 list-none rounded-2xl bg-white"
+      whileDrag={{ 
+        scale: 1.02, 
+        boxShadow: '0 25px 50px -12px rgb(0 0 0 / 0.15)', 
+        zIndex: 50, 
+        opacity: 0.95,
+        cursor: 'grabbing'
+      }}
+      transition={{ 
+        layout: { type: "spring", stiffness: 40, damping: 12 },
+        default: { type: "spring", stiffness: 200, damping: 20 }
+      }}
+    >
+      {renderContent(type, dragControls)}
+    </Reorder.Item>
+  );
+};
 
 export default function CreativeLayout({
   targetProfile, user, isOwn, activeTemplate, activeAccent, activeHeaderColor,
@@ -24,12 +50,155 @@ export default function CreativeLayout({
   savingProfile, handleSaveProfile,
   avatarInputRef, uploadingAvatar, handleAvatarUpload,
   handleSaveItem, handleDeleteItem,
-  initials, avatarColor, navigate
+  initials, avatarColor, navigate,
+  sectionOrder, setSectionOrder, handleSaveSectionOrder
 }) {
   const accent = activeAccent || '#7c3aed';
-  const sections = ['summary', 'education', 'experience', 'project', 'achievement', 'certification', 'language'];
+  const sections = ALL_SECTIONS;
 
-  const renderSection = (type) => {
+  const handleReorder = (newOrder) => {
+    const indices = sectionOrder.map((s, i) => sections.includes(s) ? i : -1).filter(i => i !== -1);
+    const updatedOrder = [...sectionOrder];
+    indices.forEach((index, i) => {
+      updatedOrder[index] = newOrder[i];
+    });
+    setSectionOrder(updatedOrder);
+    handleSaveSectionOrder(updatedOrder);
+  };
+
+  const orderedSections = sections.slice().sort((a, b) => {
+    const idxA = sectionOrder.indexOf(a);
+    const idxB = sectionOrder.indexOf(b);
+    return (idxA !== -1 ? idxA : 999) - (idxB !== -1 ? idxB : 999);
+  });
+
+
+
+  const renderSection = (type, dragControls) => {
+    if (type === 'skills') {
+      if (!isOwn && (targetProfile?.skills || []).length === 0) return null;
+      return (
+        <div key="skills" className="creative-card resume-section group" style={{ borderLeftColor: accent }}>
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2.5">
+              {isOwn && dragControls && (
+                <div onPointerDown={(e) => dragControls.start(e)} style={{ touchAction: 'none' }} className="cursor-grab active:cursor-grabbing p-1 -ml-1 rounded hover:bg-gray-100 text-gray-300 transition-colors no-print" title="Hold and drag to reorder">
+                  <svg className="w-4 h-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="12" r="1"/><circle cx="9" cy="5" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="19" r="1"/></svg>
+                </div>
+              )}
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: accent + '18' }}>
+                <Sparkles className="w-4 h-4" style={{ color: accent }} />
+              </div>
+              <h3 className="text-sm font-extrabold uppercase tracking-widest text-gray-900">Skills</h3>
+            </div>
+            {isOwn && (
+              <button onClick={() => { setEditingSkills(true); setEditSkillsInput(''); }}
+                className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors opacity-0 group-hover:opacity-100 no-print">
+                <Plus className="w-3.5 h-3.5 text-gray-400" />
+              </button>
+            )}
+          </div>
+          
+          {editingSkills ? (
+             <div className="space-y-2 no-print">
+               <input className="w-full border border-gray-200 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand/30"
+                 value={editSkillsInput} onChange={(e) => setEditSkillsInput(e.target.value)} placeholder="e.g. React, Node.js, Python (comma separated)" autoFocus onKeyDown={(e) => { if(e.key === 'Enter') handleSaveSkills(); }} />
+               <div className="flex gap-2 pt-1">
+                 <button onClick={handleSaveSkills} disabled={savingSkills}
+                   className="flex items-center gap-1 px-3 py-1.5 rounded-md bg-brand text-white text-xs font-semibold hover:bg-brand-dark disabled:opacity-50">
+                   <Check className="w-3 h-3" /> Save
+                 </button>
+                 <button onClick={() => { setEditingSkills(false); setEditSkillsInput(''); }}
+                   className="flex items-center gap-1 px-3 py-1.5 rounded-md border border-gray-200 text-xs text-gray-500 hover:bg-gray-50">
+                   <X className="w-3 h-3" /> Cancel
+                 </button>
+               </div>
+             </div>
+          ) : (
+            <>
+              <div className="flex flex-wrap gap-2">
+                {(targetProfile?.skills || []).map((skill) => (
+                  <span key={skill} className="creative-skill-pill group/skill flex items-center gap-1.5" style={{
+                    backgroundColor: accent + '12',
+                    color: accent,
+                    borderColor: accent + '30'
+                  }}>
+                    {skill}
+                    {isOwn && (
+                      <button onClick={() => handleDeleteSkill(skill)} className="p-0.5 rounded opacity-0 group-hover/skill:opacity-100 transition-opacity no-print" style={{ color: accent }}>
+                        <X className="w-2.5 h-2.5" />
+                      </button>
+                    )}
+                  </span>
+                ))}
+              </div>
+              {isOwn && (targetProfile?.skills || []).length === 0 && (
+                <p className="text-xs italic text-gray-300">No skills added yet.</p>
+              )}
+            </>
+          )}
+        </div>
+      );
+    }
+
+    if (type === 'hobby') {
+      const hobbies = itemsByType('hobby');
+      const isAddingHobby = addingType === 'hobby';
+      if (!isOwn && hobbies.length === 0) return null;
+
+      return (
+        <div key="hobby" className="creative-card resume-section" style={{ borderLeftColor: accent }}>
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2.5">
+              {isOwn && dragControls && (
+                <div onPointerDown={(e) => dragControls.start(e)} style={{ touchAction: 'none' }} className="cursor-grab active:cursor-grabbing p-1 -ml-1 rounded hover:bg-gray-100 text-gray-300 transition-colors no-print" title="Hold and drag to reorder">
+                  <svg className="w-4 h-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="12" r="1"/><circle cx="9" cy="5" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="19" r="1"/></svg>
+                </div>
+              )}
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: accent + '18' }}>
+                {React.createElement(SECTION_META.hobby.icon, { className: 'w-4 h-4', style: { color: accent } })}
+              </div>
+              <h3 className="text-sm font-extrabold uppercase tracking-widest text-gray-900">Hobbies</h3>
+            </div>
+            {isOwn && (
+              <button onClick={() => { setAddingType('hobby'); setEditingItem(null); }}
+                className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors no-print">
+                <Plus className="w-3.5 h-3.5 text-gray-400" />
+              </button>
+            )}
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {hobbies.map((item) => (
+              editingItem?.id === item.id ? (
+                <InlineItemForm key={item.id} type="hobby" initialData={item}
+                  onSave={handleSaveItem} onCancel={() => setEditingItem(null)} />
+              ) : (
+                <div key={item.id} className="group inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gray-50 border border-gray-100 text-xs text-gray-600">
+                  {item.title}
+                  {isOwn && (
+                    <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity no-print">
+                      <button onClick={() => { setEditingItem(item); setAddingType(null); }} className="p-0.5 rounded hover:bg-gray-200">
+                        <Pencil className="w-2.5 h-2.5 text-gray-400" />
+                      </button>
+                      <button onClick={() => handleDeleteItem(item)} className="p-0.5 rounded hover:bg-red-50">
+                        <Trash2 className="w-2.5 h-2.5 text-red-400" />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )
+            ))}
+          </div>
+          {isOwn && hobbies.length === 0 && !isAddingHobby && (
+            <p className="text-xs italic text-gray-300">No hobbies added yet.</p>
+          )}
+          {isAddingHobby && (
+            <InlineItemForm type="hobby" onSave={handleSaveItem} onCancel={() => setAddingType(null)} />
+          )}
+        </div>
+      );
+    }
+
     const items = itemsByType(type);
     const isAdding = addingType === type;
     const meta = SECTION_META[type];
@@ -43,6 +212,16 @@ export default function CreativeLayout({
         {/* Card header */}
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2.5">
+            {isOwn && dragControls && (
+              <div
+                onPointerDown={(e) => dragControls.start(e)}
+                style={{ touchAction: 'none' }}
+                className="cursor-grab active:cursor-grabbing p-1 -ml-1 rounded hover:bg-gray-100 text-gray-400 transition-colors no-print"
+                title="Hold and drag to reorder"
+              >
+                <svg className="w-4 h-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="12" r="1"/><circle cx="9" cy="5" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="19" r="1"/></svg>
+              </div>
+            )}
             <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: accent + '18' }}>
               <Icon className="w-4 h-4" style={{ color: accent }} />
             </div>
@@ -256,120 +435,12 @@ export default function CreativeLayout({
         )}
 
         {/* Sections as cards */}
-        {sections.map((type) => renderSection(type))}
+        <Reorder.Group axis="y" values={orderedSections} onReorder={handleReorder} className="m-0 p-0 flex flex-col gap-4">
+          {orderedSections.map((type) => (
+            <DraggableSection key={type} type={type} renderContent={renderSection} />
+          ))}
+        </Reorder.Group>
 
-        {/* Skills as colored pills */}
-        {(isOwn || (targetProfile?.skills || []).length > 0) && (
-          <div className="creative-card resume-section group" style={{ borderLeftColor: accent }}>
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: accent + '18' }}>
-                  <Sparkles className="w-4 h-4" style={{ color: accent }} />
-                </div>
-                <h3 className="text-sm font-extrabold uppercase tracking-widest text-gray-900">Skills</h3>
-              </div>
-              {isOwn && (
-                <button onClick={() => { setEditingSkills(true); setEditSkillsInput(''); }}
-                  className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors opacity-0 group-hover:opacity-100 no-print">
-                  <Plus className="w-3.5 h-3.5 text-gray-400" />
-                </button>
-              )}
-            </div>
-            
-            {editingSkills ? (
-               <div className="space-y-2 no-print">
-                 <input className="w-full border border-gray-200 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand/30"
-                   value={editSkillsInput} onChange={(e) => setEditSkillsInput(e.target.value)} placeholder="e.g. React, Node.js, Python (comma separated)" autoFocus onKeyDown={(e) => { if(e.key === 'Enter') handleSaveSkills(); }} />
-                 <div className="flex gap-2 pt-1">
-                   <button onClick={handleSaveSkills} disabled={savingSkills}
-                     className="flex items-center gap-1 px-3 py-1.5 rounded-md bg-brand text-white text-xs font-semibold hover:bg-brand-dark disabled:opacity-50">
-                     <Check className="w-3 h-3" /> Save
-                   </button>
-                   <button onClick={() => { setEditingSkills(false); setEditSkillsInput(''); }}
-                     className="flex items-center gap-1 px-3 py-1.5 rounded-md border border-gray-200 text-xs text-gray-500 hover:bg-gray-50">
-                     <X className="w-3 h-3" /> Cancel
-                   </button>
-                 </div>
-               </div>
-            ) : (
-              <>
-                <div className="flex flex-wrap gap-2">
-                  {(targetProfile?.skills || []).map((skill) => (
-                    <span key={skill} className="creative-skill-pill group/skill flex items-center gap-1.5" style={{
-                      backgroundColor: accent + '12',
-                      color: accent,
-                      borderColor: accent + '30'
-                    }}>
-                      {skill}
-                      {isOwn && (
-                        <button onClick={() => handleDeleteSkill(skill)} className="p-0.5 rounded opacity-0 group-hover/skill:opacity-100 transition-opacity no-print" style={{ color: accent }}>
-                          <X className="w-2.5 h-2.5" />
-                        </button>
-                      )}
-                    </span>
-                  ))}
-                </div>
-                {isOwn && (targetProfile?.skills || []).length === 0 && (
-                  <p className="text-xs italic text-gray-300">No skills added yet.</p>
-                )}
-              </>
-            )}
-          </div>
-        )}
-
-        {/* Hobbies */}
-        {(() => {
-          const hobbies = itemsByType('hobby');
-          const isAddingHobby = addingType === 'hobby';
-          if (!isOwn && hobbies.length === 0) return null;
-
-          return (
-            <div className="creative-card resume-section" style={{ borderLeftColor: accent }}>
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: accent + '18' }}>
-                    {React.createElement(SECTION_META.hobby.icon, { className: 'w-4 h-4', style: { color: accent } })}
-                  </div>
-                  <h3 className="text-sm font-extrabold uppercase tracking-widest text-gray-900">Hobbies</h3>
-                </div>
-                {isOwn && (
-                  <button onClick={() => { setAddingType('hobby'); setEditingItem(null); }}
-                    className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors no-print">
-                    <Plus className="w-3.5 h-3.5 text-gray-400" />
-                  </button>
-                )}
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {hobbies.map((item) => (
-                  editingItem?.id === item.id ? (
-                    <InlineItemForm key={item.id} type="hobby" initialData={item}
-                      onSave={handleSaveItem} onCancel={() => setEditingItem(null)} />
-                  ) : (
-                    <div key={item.id} className="group inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gray-50 border border-gray-100 text-xs text-gray-600">
-                      {item.title}
-                      {isOwn && (
-                        <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity no-print">
-                          <button onClick={() => { setEditingItem(item); setAddingType(null); }} className="p-0.5 rounded hover:bg-gray-200">
-                            <Pencil className="w-2.5 h-2.5 text-gray-400" />
-                          </button>
-                          <button onClick={() => handleDeleteItem(item)} className="p-0.5 rounded hover:bg-red-50">
-                            <Trash2 className="w-2.5 h-2.5 text-red-400" />
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  )
-                ))}
-              </div>
-              {isOwn && hobbies.length === 0 && !isAddingHobby && (
-                <p className="text-xs italic text-gray-300">No hobbies added yet.</p>
-              )}
-              {isAddingHobby && (
-                <InlineItemForm type="hobby" onSave={handleSaveItem} onCancel={() => setAddingType(null)} />
-              )}
-            </div>
-          );
-        })()}
       </div>
     </motion.div>
   );
