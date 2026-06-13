@@ -16,6 +16,7 @@ import { supabase } from '../lib/supabase';
 
 // --- Sub-components ---
 import FeedSearchBar from '../components/feed/FeedSearchBar';
+import SuggestedUsers from '../components/feed/SuggestedUsers';
 import FeedFilters from '../components/feed/FeedFilters';
 import NewPostsPill from '../components/feed/NewPostsPill';
 import PostCard from '../components/feed/post/PostCard';
@@ -363,20 +364,8 @@ export default function FeedPage() {
 
       {/* ─── DESKTOP RIGHT SIDEBAR ─── */}
       <aside className="hidden lg:flex flex-col gap-6 sticky top-24">
-        {/* Placeholder for trending tags, suggested connections, etc. */}
-        <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
-          <h3 className="text-sm font-bold text-gray-900 mb-4 flex items-center gap-2">
-            Trending <Sparkles className="w-4 h-4 text-amber-500" />
-          </h3>
-          <div className="space-y-3">
-            {['#hiring', '#reactjs', '#design', '#frontend'].map((tag) => (
-              <a href={`/feed?hashtag=${encodeURIComponent(tag.replace('#', ''))}`} key={tag} className="flex justify-between items-center group">
-                <span className="text-sm font-semibold text-gray-600 group-hover:text-violet-600 transition-colors">{tag}</span>
-                <span className="text-xs text-gray-400">🔥</span>
-              </a>
-            ))}
-          </div>
-        </div>
+        {/* Suggested connections */}
+        <SuggestedUsers />
 
         {/* Footer links */}
         <div className="text-xs text-gray-400 font-medium flex flex-wrap gap-x-3 gap-y-2 px-2">
