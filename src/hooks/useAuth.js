@@ -2,6 +2,7 @@
 import { useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuthStore } from '../store/authStore';
+import { useGlobeStore } from '../store/globeStore';
 
 export function useAuth() {
   const { user, profile, loading, setUser, setProfile, setSession, setLoading, clear } =
@@ -9,6 +10,7 @@ export function useAuth() {
 
   useEffect(() => {
     let mounted = true;
+    let initDone = false;
 
     // Fetch the profile row for a given user id
     async function fetchProfile(userId) {
@@ -45,18 +47,29 @@ export function useAuth() {
         console.error('Session init error:', err);
       } finally {
         if (mounted) setLoading(false);
+        initDone = true;
       }
     }
 
     initSession();
 
     // Subscribe to auth state changes
+    // Skip INITIAL_SESSION and SIGNED_IN events that fire before initSession completes
+    // to prevent duplicate state updates that cause the globe to flash/glitch
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (!mounted) return;
 
+        // During initial load, initSession already handles setting the user/profile.
+        // Supabase fires INITIAL_SESSION or SIGNED_IN during init — skip those to
+        // prevent a second setState cascade that causes the globe to re-render.
+        if (!initDone && (event === 'INITIAL_SESSION' || event === 'SIGNED_IN')) {
+          return;
+        }
+
         if (event === 'SIGNED_OUT') {
           clear();
+          useGlobeStore.getState().resetGlobe();
           return;
         }
 
@@ -67,6 +80,7 @@ export function useAuth() {
           if (mounted) setProfile(profileData);
         } else {
           clear();
+          useGlobeStore.getState().resetGlobe();
         }
       }
     );
@@ -84,6 +98,7 @@ export function useAuth() {
       console.error('Sign out error:', err);
     }
     clear();
+    useGlobeStore.getState().resetGlobe();
   };
 
   return { user, profile, loading, signOut };

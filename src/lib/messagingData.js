@@ -15,7 +15,7 @@ export async function getMyThreads(userId) {
         candidate:profiles!candidate_id(id, full_name, headline, avatar_url),
         employer:profiles!employer_id(id, full_name, headline, avatar_url)
       ),
-      messages(id, content, sender_id, seen, sent_at)
+      messages(id, content, sender_id, seen, sent_at, includes_portfolio_card)
     `)
     .order('created_at', { ascending: false });
 
@@ -29,7 +29,7 @@ export async function getMyThreads(userId) {
 export async function getThreadMessages(threadId) {
   const { data, error } = await supabase
     .from('messages')
-    .select('id, content, sender_id, seen, sent_at')
+    .select('id, content, sender_id, seen, sent_at, includes_portfolio_card')
     .eq('thread_id', threadId)
     .order('sent_at', { ascending: true });
 
@@ -64,9 +64,9 @@ export async function getMyRequests(userId) {
   const { data, error } = await supabase
     .from('message_requests')
     .select(`
-      id, intro_message, status, created_at,
+      id, intro_message, status, created_at, includes_portfolio_card,
       sender:profiles!sender_id(id, full_name, headline, avatar_url),
-      job:jobs!job_id(id, title, company:companies(name))
+      job:jobs!job_id(id, title, company:companies(id, name, logo_url))
     `)
     .eq('recipient_id', userId)
     .eq('status', 'pending')
@@ -83,9 +83,9 @@ export async function getMySentRequests(userId) {
   const { data, error } = await supabase
     .from('message_requests')
     .select(`
-      id, intro_message, status, created_at, sender_id,
+      id, intro_message, status, created_at, sender_id, includes_portfolio_card,
       recipient:profiles!recipient_id(id, full_name, headline, avatar_url),
-      job:jobs!job_id(id, title, company:companies(name))
+      job:jobs!job_id(id, title, company:companies(id, name, logo_url))
     `)
     .eq('sender_id', userId)
     .eq('status', 'pending')
@@ -114,10 +114,12 @@ export async function createMessageRequest(senderId, recipientId, introMessage) 
 }
 
 export async function respondToRequest(requestId, status, matchData) {
-  const { error: updateError } = await supabase
+  const { data: request, error: updateError } = await supabase
     .from('message_requests')
     .update({ status })
-    .eq('id', requestId);
+    .eq('id', requestId)
+    .select('intro_message, sender_id, includes_portfolio_card')
+    .single();
 
   if (updateError) {
     console.error('Failed to update request:', updateError);
@@ -137,12 +139,22 @@ export async function respondToRequest(requestId, status, matchData) {
     }
 
     if (match) {
-      const { error: threadError } = await supabase
+      const { data: thread, error: threadError } = await supabase
         .from('message_threads')
-        .insert({ match_id: match.id });
+        .insert({ match_id: match.id })
+        .select()
+        .single();
 
       if (threadError) {
         console.error('Failed to create thread:', threadError);
+      } else if (thread && request?.intro_message) {
+        // Insert the original request message into the thread
+        await supabase.from('messages').insert({
+          thread_id: thread.id,
+          sender_id: request.sender_id,
+          content: request.intro_message,
+          includes_portfolio_card: request.includes_portfolio_card || false
+        });
       }
     }
   }

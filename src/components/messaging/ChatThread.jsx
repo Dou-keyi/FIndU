@@ -1,13 +1,15 @@
 // ChatThread.jsx — real-time chat view with Supabase Realtime subscription
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, Send } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { ChevronLeft, Send, Building2 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { getThreadMessages, sendMessage, markThreadSeen } from '../../lib/messagingData';
 import { getInitials, getAvatarColor } from '../../lib/avatarUtils';
 import { formatRelativeTime } from '../../lib/relativeTime';
 
-function MessageBubble({ message, isMine, isLast }) {
+function MessageBubble({ message, isMine, isLast, companyContext }) {
+  const navigate = useNavigate();
   const time = new Date(message.sent_at).toLocaleTimeString([], {
     hour: '2-digit',
     minute: '2-digit',
@@ -29,6 +31,36 @@ function MessageBubble({ message, isMine, isLast }) {
           }`}
         >
           {message.content}
+          
+          {message.includes_portfolio_card && companyContext && (
+            <div 
+              onClick={(e) => {
+                e.stopPropagation();
+                navigate(`/company/${companyContext.id}`);
+              }}
+              className={`mt-3 p-3 rounded-xl cursor-pointer transition-colors flex items-center gap-3 border ${
+                isMine 
+                  ? 'bg-white/10 hover:bg-white/20 border-white/20 text-white' 
+                  : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-800'
+              }`}
+            >
+              <div className={`w-10 h-10 rounded-lg overflow-hidden flex-shrink-0 flex items-center justify-center font-bold ${
+                isMine ? 'bg-white text-brand-600' : 'bg-slate-200 text-slate-500'
+              }`}>
+                {companyContext.logo_url ? (
+                  <img src={companyContext.logo_url} alt="" className="w-full h-full object-cover" />
+                ) : (
+                  <Building2 className="w-5 h-5" />
+                )}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold truncate">{companyContext.name}</p>
+                <p className={`text-[10px] truncate ${isMine ? 'text-brand-100' : 'text-slate-500'}`}>
+                  View Company Portfolio
+                </p>
+              </div>
+            </div>
+          )}
         </div>
         <div className={`flex items-center gap-1 mt-0.5 ${isMine ? 'justify-end' : 'justify-start'}`}>
           <span className="text-[10px] text-slate-400">{time}</span>
@@ -43,7 +75,7 @@ function MessageBubble({ message, isMine, isLast }) {
   );
 }
 
-export default function ChatThread({ threadId, isRequest, isDraft, initialMessages, otherParty, jobContext, userId, onBack, onThreadUpdate, onSendDraft, requestId }) {
+export default function ChatThread({ threadId, isRequest, isDraft, initialMessages, otherParty, jobContext, companyContext, userId, onBack, onThreadUpdate, onSendDraft, requestId }) {
   const [messages, setMessages] = useState([]);
   const [inputValue, setInputValue] = useState('');
   const [sending, setSending] = useState(false);
@@ -262,7 +294,7 @@ export default function ChatThread({ threadId, isRequest, isDraft, initialMessag
               const isMine = msg.sender_id === userId;
               const isLast = isMine && idx === messages.length - 1;
               return (
-                <MessageBubble key={msg.id} message={msg} isMine={isMine} isLast={isLast} />
+                <MessageBubble key={msg.id} message={msg} isMine={isMine} isLast={isLast} companyContext={companyContext} />
               );
             })}
           </>

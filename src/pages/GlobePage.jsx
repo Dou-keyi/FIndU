@@ -10,10 +10,13 @@ import SwipeStack from '../components/swipe/SwipeStack';
 import JobDetailModal from '../components/swipe/JobDetailModal';
 import CandidatePortfolioSheet from '../components/swipe/CandidatePortfolioSheet';
 import ApplyConfirmSheet from '../components/swipe/ApplyConfirmSheet';
+import SaveConfirmModal from '../components/swipe/SaveConfirmModal';
 import MutualMatchModal from '../components/swipe/MutualMatchModal';
 import JobsListSection from '../components/globe/JobsListSection';
 import { supabase } from '../lib/supabase';
+import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
+import { useGlobeStore } from '../store/globeStore';
 
 export default function GlobePage() {
   const { user, profile, signOut } = useAuth();
@@ -24,18 +27,23 @@ export default function GlobePage() {
   const setJustLoggedIn = useAuthStore((s) => s.setJustLoggedIn);
   const [showContent, setShowContent] = useState(!justLoggedIn);
 
-  // Core state
-  const [mode, setMode] = useState('globe'); // 'globe' | 'swipe'
-  const [nodes, setNodes] = useState([]);
-  const [employerJobs, setEmployerJobs] = useState([]);
-  const [swipeQueue, setSwipeQueue] = useState([]);
-  const [activeNode, setActiveNode] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
+
+  // Core state from store
+  const {
+    mode, setMode,
+    nodes, setNodes,
+    employerJobs, setEmployerJobs,
+    swipeQueue, setSwipeQueue,
+    activeNode, setActiveNode,
+    hasFetched, setHasFetched
+  } = useGlobeStore();
+
+  const [loading, setLoading] = useState(!hasFetched);
 
   // Sheet/modal state
-  const [jobDetailNode, setJobDetailNode] = useState(null);
-  const [candidateDetailNode, setCandidateDetailNode] = useState(null);
   const [applyConfirmNode, setApplyConfirmNode] = useState(null);
+  const [saveConfirmNode, setSaveConfirmNode] = useState(null);
   const [mutualMatchNode, setMutualMatchNode] = useState(null);
 
   // Active job ID for employer match checking
@@ -44,6 +52,10 @@ export default function GlobePage() {
   // Load globe data on mount
   useEffect(() => {
     async function loadNodes() {
+      if (hasFetched) {
+        setLoading(false);
+        return;
+      }
       setLoading(true);
       try {
         if (role === 'candidate') {
@@ -61,6 +73,7 @@ export default function GlobePage() {
             }
           }
         }
+        setHasFetched(true);
       } catch (err) {
         console.error('Failed to load globe data:', err);
       } finally {
@@ -68,10 +81,11 @@ export default function GlobePage() {
       }
     }
 
-    if (profile) {
+    if (profile?.id) {
       loadNodes();
     }
-  }, [profile, role]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile?.id, role, hasFetched]);
 
   // Handle post-login entrance animation
   useEffect(() => {
@@ -106,17 +120,21 @@ export default function GlobePage() {
     setSwipeQueue([]);
   }, []);
 
-  // Sheet handlers
+  // Sheet/modal handlers
   const handleShowJobDetail = useCallback((node) => {
-    setJobDetailNode(node);
-  }, []);
+    navigate(`/jobs/${node.id || node._jobId}`);
+  }, [navigate]);
 
   const handleShowCandidateDetail = useCallback((node) => {
-    setCandidateDetailNode(node);
-  }, []);
+    navigate(`/portfolio/${node.id}`);
+  }, [navigate]);
 
   const handleApplyConfirm = useCallback((node) => {
     setApplyConfirmNode(node);
+  }, []);
+
+  const handleSaveConfirm = useCallback((node) => {
+    setSaveConfirmNode(node);
   }, []);
 
   const handleMutualMatch = useCallback((node) => {
@@ -133,9 +151,6 @@ export default function GlobePage() {
       if (error && error.code !== '23505') throw error;
       setApplyConfirmNode({ ...job, title: job.title, company_name: job.company?.name });
       setNodes(prev => prev.map(n => n.id === job.id ? { ...n, has_applied: true } : n));
-      if (jobDetailNode?.id === job.id) {
-        setJobDetailNode(prev => ({ ...prev, has_applied: true }));
-      }
     } catch (err) {
       console.error('Failed to apply:', err);
     }
@@ -154,7 +169,7 @@ export default function GlobePage() {
   return (
     <div className={`relative min-h-screen min-h-[100dvh] flex flex-col overflow-x-hidden ${mode === 'swipe' ? 'overflow-hidden' : 'overflow-y-auto'}`}>
       {/* Deep-space background */}
-      <UniverseBackground showConstellation={false} />
+      <UniverseBackground showConstellation={false} skipEntranceAnimation={justLoggedIn} />
       
       {/* Extra ambient light for the globe section sky */}
       <div className="absolute top-[20%] left-1/2 -translate-x-1/2 w-[80vw] h-[80vw] max-w-[800px] max-h-[800px] bg-blue-500/15 rounded-full blur-[120px] pointer-events-none z-0 mix-blend-screen" />
@@ -273,6 +288,7 @@ export default function GlobePage() {
                 onShowJobDetail={handleShowJobDetail}
                 onShowCandidateDetail={handleShowCandidateDetail}
                 onApplyConfirm={handleApplyConfirm}
+                onSaveConfirm={handleSaveConfirm}
                 onMutualMatch={handleMutualMatch}
                 onAllCaughtUp={handleBackToGlobe}
               />
@@ -282,32 +298,16 @@ export default function GlobePage() {
       </main>
 
       {/* Sheets & Modals */}
-      <JobDetailModal
-        node={jobDetailNode}
-        isOpen={!!jobDetailNode}
-        onClose={() => setJobDetailNode(null)}
-        onApply={() => {
-          if (jobDetailNode) handleJobApply(jobDetailNode);
-          setJobDetailNode(null);
-        }}
-      />
-
-      <CandidatePortfolioSheet
-        node={candidateDetailNode}
-        isOpen={!!candidateDetailNode}
-        onClose={() => setCandidateDetailNode(null)}
-        onReject={() => {
-          setCandidateDetailNode(null);
-        }}
-        onShortlist={() => {
-          setCandidateDetailNode(null);
-        }}
-      />
-
       <ApplyConfirmSheet
         node={applyConfirmNode}
         isOpen={!!applyConfirmNode}
         onClose={() => setApplyConfirmNode(null)}
+      />
+
+      <SaveConfirmModal
+        node={saveConfirmNode}
+        isOpen={!!saveConfirmNode}
+        onClose={() => setSaveConfirmNode(null)}
       />
 
       <MutualMatchModal

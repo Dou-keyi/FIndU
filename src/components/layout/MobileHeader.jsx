@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LogOut, User, PlusCircle } from 'lucide-react';
+import { LogOut, User, PlusCircle, Building2 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { supabase } from '../../lib/supabase';
 import { getInitials, getAvatarColor } from '../../lib/avatarUtils';
@@ -8,7 +8,7 @@ import LogoutConfirmModal from './LogoutConfirmModal';
 
 export default function MobileHeader() {
   const navigate = useNavigate();
-  const { profile, user } = useAuth();
+  const { profile, user, signOut } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
 
@@ -19,7 +19,7 @@ export default function MobileHeader() {
 
   const handleLogoutConfirm = async () => {
     setShowLogoutModal(false);
-    await supabase.auth.signOut();
+    await signOut();
     navigate('/auth');
   };
 
@@ -62,8 +62,8 @@ export default function MobileHeader() {
                 }}
                 className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-gray-600 hover:bg-gray-50 transition-colors focus-visible:outline-none focus-visible:bg-gray-50 font-medium"
               >
-                <User className="w-4 h-4" aria-hidden="true" />
-                View Profile
+                {profile?.role === 'employer' ? <Building2 className="w-4 h-4" aria-hidden="true" /> : <User className="w-4 h-4" aria-hidden="true" />}
+                {profile?.role === 'employer' ? 'View Company' : 'View Profile'}
               </button>
               <button
                 onClick={handleLogoutClick}

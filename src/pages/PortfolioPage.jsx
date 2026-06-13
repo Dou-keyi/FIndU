@@ -406,7 +406,7 @@ export default function PortfolioPage() {
 
 
   /* ─── Loading state ─── */
-  if (loading) {
+  if (loading || (profile?.role === 'employer' && isOwn)) {
     return (
       <div className="min-h-screen min-h-[100dvh] bg-gray-50 flex items-center justify-center">
         <div className="spinner" />

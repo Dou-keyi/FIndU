@@ -244,21 +244,28 @@ export default function JobDetailPage() {
               {companyInitials}
             </div>
 
-            <div className="flex-1 min-w-0">
-              <h1 className="text-xl font-black text-gray-900 leading-tight tracking-tight mb-1">
-                {job.title}
-              </h1>
+            <div className="flex-1 min-w-0 flex items-center justify-between">
+              <div>
+                <h1 className="text-xl font-black text-gray-900 leading-tight tracking-tight mb-1">
+                  {job.title}
+                </h1>
+                <div className="flex items-center gap-1.5">
+                  <Building2 className="w-3.5 h-3.5 text-gray-400" />
+                  <span className="text-sm font-semibold text-gray-600">
+                    {companyName}
+                  </span>
+                  {company?.verified && (
+                    <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                      ✓ Verified
+                    </span>
+                  )}
+                </div>
+              </div>
               <button
                 onClick={() => company?.id && navigate(`/company/${company.id}`)}
-                className="text-sm font-semibold text-gray-600 hover:text-violet-700 transition-colors flex items-center gap-1.5"
+                className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-bold text-gray-700 hover:bg-gray-50 shadow-sm transition-all"
               >
-                <Building2 className="w-3.5 h-3.5 text-gray-400" />
-                {companyName}
-                {company?.verified && (
-                  <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                    ✓ Verified
-                  </span>
-                )}
+                View Company <ExternalLink className="w-3 h-3" />
               </button>
             </div>
           </div>
@@ -398,9 +405,9 @@ export default function JobDetailPage() {
 
               <button
                 onClick={() => navigate(`/company/${company.id}`)}
-                className="mt-4 text-xs font-semibold text-brand hover:text-brand-dark transition-colors"
+                className="w-full mt-4 py-3 flex items-center justify-center gap-2 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-xl text-sm font-bold text-gray-700 transition-colors shadow-sm"
               >
-                View full company profile →
+                View full company profile <ExternalLink className="w-4 h-4 text-gray-400" />
               </button>
             </motion.section>
           )}

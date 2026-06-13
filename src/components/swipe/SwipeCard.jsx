@@ -100,19 +100,18 @@ function JobCard({ node, onShowMore }) {
       {/* Skills */}
       {node.skills_required && node.skills_required.length > 0 && (
         <div className="mb-5">
-          <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2.5">Required Skills</h4>
           <div className="flex flex-wrap gap-1.5">
-            {node.skills_required.slice(0, 5).map((skill) => (
+            {node.skills_required.slice(0, 3).map((skill) => (
               <span
                 key={skill}
-                className="px-3 py-1.5 rounded-full text-[11px] font-bold bg-white text-slate-600 border border-slate-200 shadow-[0_1px_2px_rgba(0,0,0,0.05)]"
+                className="px-3 py-1.5 rounded-full text-[11px] font-bold bg-brand-50 text-brand-700 border border-brand-100"
               >
                 {skill}
               </span>
             ))}
-            {node.skills_required.length > 5 && (
+            {node.skills_required.length > 3 && (
               <span className="px-3 py-1.5 rounded-full text-[11px] font-bold bg-slate-50 text-slate-400 border border-dashed border-slate-200">
-                +{node.skills_required.length - 5}
+                +{node.skills_required.length - 3}
               </span>
             )}
           </div>
@@ -125,21 +124,21 @@ function JobCard({ node, onShowMore }) {
           <div className="flex items-center gap-2 mb-2">
             <span className="text-brand text-[10px] font-extrabold tracking-widest uppercase">✦ AI Analysis</span>
           </div>
-          <p className="text-[13px] text-slate-700 font-medium leading-relaxed">
+          <p className="text-[13px] text-slate-700 font-medium leading-relaxed line-clamp-3">
             {node.matchReason}
           </p>
         </div>
       </div>
 
-      {/* Show more */}
+      {/* Prominent Full Detail Button */}
       <button
         onClick={(e) => {
           e.stopPropagation();
           onShowMore?.();
         }}
-        className="flex items-center justify-center gap-1.5 mt-4 py-2.5 text-xs font-bold text-slate-400 hover:text-brand hover:bg-brand-50 rounded-xl transition-all"
+        className="w-full flex items-center justify-center gap-2 mt-4 py-3.5 text-sm font-bold text-white bg-brand hover:bg-brand-dark rounded-xl transition-all shadow-md active:scale-[0.98]"
       >
-        View full description <ChevronDown className="w-4 h-4" />
+        View Full Details
       </button>
     </div>
   );
@@ -193,19 +192,18 @@ function CandidateCard({ node, onShowMore }) {
       {/* Skills */}
       {node.skills && node.skills.length > 0 && (
         <div className="mb-5">
-          <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2.5">Top Skills</h4>
           <div className="flex flex-wrap gap-1.5">
-            {node.skills.slice(0, 4).map((skill) => (
+            {node.skills.slice(0, 3).map((skill) => (
               <span
                 key={skill}
-                className="px-3 py-1.5 rounded-full text-[11px] font-bold bg-white text-slate-700 border border-slate-200 shadow-[0_1px_2px_rgba(0,0,0,0.05)]"
+                className="px-3 py-1.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-100"
               >
                 {skill}
               </span>
             ))}
-            {node.skills.length > 4 && (
+            {node.skills.length > 3 && (
               <span className="px-3 py-1.5 rounded-full text-[11px] font-bold bg-slate-50 text-slate-400 border border-dashed border-slate-200">
-                +{node.skills.length - 4}
+                +{node.skills.length - 3}
               </span>
             )}
           </div>
@@ -218,21 +216,21 @@ function CandidateCard({ node, onShowMore }) {
           <div className="flex items-center gap-2 mb-2">
             <span className="text-emerald-700 text-[10px] font-extrabold tracking-widest uppercase">✦ AI Analysis</span>
           </div>
-          <p className="text-[13px] text-slate-700 font-medium leading-relaxed">
+          <p className="text-[13px] text-slate-700 font-medium leading-relaxed line-clamp-3">
             {node.matchReason}
           </p>
         </div>
       </div>
 
-      {/* Show more */}
+      {/* Prominent Full Detail Button */}
       <button
         onClick={(e) => {
           e.stopPropagation();
           onShowMore?.();
         }}
-        className="flex items-center justify-center gap-1.5 mt-4 py-2.5 text-xs font-bold text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-xl transition-all"
+        className="w-full flex items-center justify-center gap-2 mt-4 py-3.5 text-sm font-bold text-white bg-[#15B886] hover:bg-[#1D9E75] rounded-xl transition-all shadow-md active:scale-[0.98]"
       >
-        View full profile <ChevronDown className="w-4 h-4" />
+        View Full Portfolio
       </button>
     </div>
   );

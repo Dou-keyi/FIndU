@@ -104,7 +104,7 @@ function JobConstellation({ fadeOut = false }) {
   );
 }
 
-export function UniverseBackground({ fadeOut = false, showConstellation = true } = {}) {
+export function UniverseBackground({ fadeOut = false, showConstellation = true, skipEntranceAnimation = false } = {}) {
   const stars = useMemo(() => {
     return Array.from({ length: 200 }).map((_, i) => {
       const size = Math.random() * 2 + 1;
@@ -123,17 +123,17 @@ export function UniverseBackground({ fadeOut = false, showConstellation = true }
     <div className="absolute inset-0 overflow-hidden bg-[#020617]">
       {/* Deep space radial gradient - dark blue theme */}
       <motion.div 
-        initial={{ opacity: 0 }}
+        initial={{ opacity: skipEntranceAnimation ? 1 : 0 }}
         animate={{ opacity: 1 }}
-        transition={{ duration: 2, ease: "easeIn" }}
+        transition={{ duration: skipEntranceAnimation ? 0 : 2, ease: "easeIn" }}
         className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-blue-900/30 via-slate-950 to-black pointer-events-none z-0" 
       />
 
       {/* Stars */}
       <motion.div 
-        initial={{ opacity: 0 }}
+        initial={{ opacity: skipEntranceAnimation ? 1 : 0 }}
         animate={{ opacity: 1 }}
-        transition={{ duration: 2, delay: 0.5, ease: "easeIn" }}
+        transition={{ duration: skipEntranceAnimation ? 0 : 2, delay: skipEntranceAnimation ? 0 : 0.5, ease: "easeIn" }}
         className="absolute inset-0 z-0"
       >
         {stars.map((star) => (
@@ -192,7 +192,7 @@ export function UniverseBackground({ fadeOut = false, showConstellation = true }
 
       {/* Glowing Nebulae */}
       <motion.div
-        initial={{ opacity: 0 }}
+        initial={{ opacity: skipEntranceAnimation ? 1 : 0 }}
         animate={{ 
           opacity: 1,
           x: [0, 60, 0],
@@ -208,7 +208,7 @@ export function UniverseBackground({ fadeOut = false, showConstellation = true }
         className="absolute top-1/4 -left-32 w-[40rem] h-[40rem] bg-blue-600/20 rounded-full blur-[130px] pointer-events-none z-0"
       />
       <motion.div
-        initial={{ opacity: 0 }}
+        initial={{ opacity: skipEntranceAnimation ? 1 : 0 }}
         animate={{ 
           opacity: 1,
           x: [0, -60, 0],
@@ -226,9 +226,9 @@ export function UniverseBackground({ fadeOut = false, showConstellation = true }
       
       {/* Grid overlay for a tech feel */}
       <motion.div 
-        initial={{ opacity: 0 }}
+        initial={{ opacity: skipEntranceAnimation ? 1 : 0 }}
         animate={{ opacity: 1 }}
-        transition={{ duration: 2, delay: 1 }}
+        transition={{ duration: skipEntranceAnimation ? 0 : 2, delay: skipEntranceAnimation ? 0 : 1 }}
         className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff03_1px,transparent_1px),linear-gradient(to_bottom,#ffffff03_1px,transparent_1px)] bg-[size:3rem_3rem] pointer-events-none z-0" 
       />
 
