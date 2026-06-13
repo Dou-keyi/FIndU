@@ -169,13 +169,15 @@ export default function PostActionBar({ post }) {
 
       <div className="flex items-center gap-1">
         {/* DM Send */}
-        <button
-          onClick={() => openDMPanel(null, post)}
-          className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500"
-          aria-label="Send via DM"
-        >
-          <Send className="w-[18px] h-[18px]" />
-        </button>
+        {user?.id !== post.author_id && (
+          <button
+            onClick={() => openDMPanel(post.author, post)}
+            className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500"
+            aria-label="Send via DM"
+          >
+            <Send className="w-[18px] h-[18px]" />
+          </button>
+        )}
 
         {/* Bookmark */}
         <BookmarkPopover
