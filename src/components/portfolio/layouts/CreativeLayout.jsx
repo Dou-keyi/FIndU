@@ -231,23 +231,6 @@ export default function CreativeLayout({
           BODY — Card-based sections
          ════════════════════════════════ */}
       <div className="p-6 md:p-8 space-y-4">
-        {/* Employer actions */}
-        {!isOwn && (
-          <div className="flex items-center gap-2 mb-2 no-print">
-            <button onClick={() => navigate('/globe')}
-              className="px-4 py-2 rounded-lg bg-brand text-white text-xs font-semibold hover:bg-brand-dark transition-colors">
-              Shortlist
-            </button>
-            <button onClick={() => navigate('/globe')}
-              className="px-4 py-2 rounded-lg border border-gray-200 text-xs font-medium text-gray-500 hover:bg-gray-50 transition-colors">
-              Not a fit
-            </button>
-            <button onClick={() => navigate('/messaging')}
-              className="px-4 py-2 rounded-lg border border-brand-200 text-xs font-semibold text-brand hover:bg-brand-50 transition-colors">
-              Message
-            </button>
-          </div>
-        )}
 
         {/* Sections as cards */}
         {sections.map((type) => renderSection(type))}

@@ -152,32 +152,6 @@ export default function PortfolioHeader({ profile, isOwn, onProfileUpdate }) {
           </div>
         )}
 
-        {/* Employer read-only action buttons */}
-        {!isOwn && (
-          <div className="flex items-center gap-2 mt-2">
-            <button
-              onClick={() => {
-                // Insert swipe_action right for shortlist
-                navigate('/globe');
-              }}
-              className="px-4 py-2 rounded-lg bg-brand text-white text-xs font-semibold hover:bg-brand-dark transition-colors"
-            >
-              Shortlist
-            </button>
-            <button
-              onClick={() => navigate('/globe')}
-              className="px-4 py-2 rounded-lg border border-gray-200 text-xs font-medium text-gray-500 hover:bg-gray-50 transition-colors"
-            >
-              Not a fit
-            </button>
-            <button
-              onClick={() => navigate('/messaging')}
-              className="px-4 py-2 rounded-lg border border-brand-200 text-xs font-semibold text-brand hover:bg-brand-50 transition-colors"
-            >
-              Message
-            </button>
-          </div>
-        )}
       </div>
     </div>
   );

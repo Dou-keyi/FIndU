@@ -2,7 +2,8 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
-  Loader2, Trash2, Download, Upload, ChevronLeft, Palette, Sparkles, CheckCircle2
+  Loader2, Trash2, Download, Upload, ChevronLeft, Palette, Sparkles, CheckCircle2,
+  X, Check, MessageSquare
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { usePortfolioSuggestion } from '../context/PortfolioSuggestionContext';
@@ -501,17 +502,34 @@ export default function PortfolioPage() {
                 Import Resume
               </button>
             )}
+            {!isOwn && profile?.role === 'employer' && (
+              <div className="flex items-center gap-2 border-r border-gray-200 pr-3 mr-1">
+                <button
+                  onClick={() => navigate('/globe')}
+                  className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700 transition-colors shadow-sm shadow-emerald-600/20"
+                >
+                  <Check className="w-3.5 h-3.5" />
+                  Shortlist
+                </button>
+                <button
+                  onClick={() => navigate('/globe')}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-red-200 bg-white text-red-600 text-xs font-semibold hover:bg-red-50 transition-colors shadow-sm"
+                >
+                  <X className="w-3.5 h-3.5" />
+                  Not a fit
+                </button>
+                <button onClick={handleMessageClick}
+                  className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-brand text-white text-xs font-semibold hover:bg-brand-dark transition-colors shadow-sm shadow-brand/20">
+                  <MessageSquare className="w-3.5 h-3.5" />
+                  Message
+                </button>
+              </div>
+            )}
             <button onClick={handleExportPDF}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-gray-900 text-white text-xs font-semibold hover:bg-gray-800 transition-colors shadow-sm">
+              className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg border border-gray-200 bg-white text-gray-700 text-xs font-semibold hover:bg-gray-50 hover:text-gray-900 transition-colors shadow-sm">
               <Download className="w-3.5 h-3.5" />
               Export PDF
             </button>
-            {!isOwn && profile?.role === 'employer' && (
-              <button onClick={handleMessageClick}
-                className="px-4 py-2 bg-brand text-white text-xs font-semibold rounded-lg hover:bg-brand-dark transition-colors shadow-sm">
-                Message
-              </button>
-            )}
           </div>
         </div>
       </div>

@@ -215,23 +215,6 @@ export default function MinimalLayout({
             BODY — Sections with thin rules
            ════════════════════════════════ */}
 
-        {/* Employer actions */}
-        {!isOwn && (
-          <div className="flex items-center justify-center gap-2 my-6 no-print">
-            <button onClick={() => navigate('/globe')}
-              className="px-4 py-2 rounded-lg bg-brand text-white text-xs font-semibold hover:bg-brand-dark transition-colors">
-              Shortlist
-            </button>
-            <button onClick={() => navigate('/globe')}
-              className="px-4 py-2 rounded-lg border border-gray-200 text-xs font-medium text-gray-500 hover:bg-gray-50 transition-colors">
-              Not a fit
-            </button>
-            <button onClick={() => navigate('/messaging')}
-              className="px-4 py-2 rounded-lg border border-brand-200 text-xs font-semibold text-brand hover:bg-brand-50 transition-colors">
-              Message
-            </button>
-          </div>
-        )}
 
         {/* Sections */}
         {sections.map((type) => renderSection(type))}
