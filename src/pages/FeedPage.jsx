@@ -97,6 +97,25 @@ export default function FeedPage() {
   const [peekAnchor, setPeekAnchor] = useState(null);
   const peekTimer = useRef(null);
 
+  // Auto-hide search bar on scroll
+  const [showSearch, setShowSearch] = useState(true);
+  const lastScrollY = useRef(0);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY;
+      if (currentScrollY > lastScrollY.current && currentScrollY > 100) {
+        setShowSearch(false);
+      } else if (currentScrollY < lastScrollY.current || currentScrollY <= 100) {
+        setShowSearch(true);
+      }
+      lastScrollY.current = currentScrollY;
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
   // Initialize Global Hooks
   useFeedRealtime();
   useKeyboardShortcuts();
@@ -283,7 +302,11 @@ export default function FeedPage() {
         </div>
 
         {/* Filters & Search */}
-        <div className="sticky top-[105px] lg:top-20 z-30 bg-white/95 backdrop-blur-md border-b border-gray-100 pb-2 pt-2 lg:pt-0 -mx-4 px-4 lg:mx-0 lg:px-0 lg:border-none lg:bg-transparent flex flex-col gap-2">
+        <div 
+          className={`sticky z-30 bg-white/95 backdrop-blur-md border-b border-gray-100 pb-2 pt-2 lg:pt-0 -mx-4 px-4 lg:mx-0 lg:px-0 lg:border-none lg:bg-transparent flex flex-col gap-2 transition-all duration-300 ${
+            showSearch ? 'top-[105px] lg:top-20 translate-y-0 opacity-100' : 'top-[105px] lg:top-20 -translate-y-full opacity-0 pointer-events-none'
+          }`}
+        >
           <FeedSearchBar />
           <FeedFilters />
         </div>
