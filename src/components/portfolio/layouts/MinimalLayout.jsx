@@ -15,6 +15,8 @@ const DraggableSection = ({ type, renderContent }) => {
       dragListener={false} 
       dragControls={dragControls} 
       className="relative z-0 list-none rounded-xl bg-white"
+      initial={{ scale: 1, boxShadow: '0 0px 0px 0px rgba(0,0,0,0)', zIndex: 0, opacity: 1 }}
+      animate={{ scale: 1, boxShadow: '0 0px 0px 0px rgba(0,0,0,0)', zIndex: 0, opacity: 1 }}
       whileDrag={{ 
         scale: 1.02, 
         boxShadow: '0 25px 50px -12px rgb(0 0 0 / 0.1)', 
@@ -236,50 +238,101 @@ export default function MinimalLayout({
         </div>
 
         {/* Items — timeline style for experience/education */}
-        {items.map((item) => (
-          editingItem?.id === item.id ? (
-            <InlineItemForm key={item.id} type={type} initialData={item}
-              onSave={handleSaveItem} onCancel={() => setEditingItem(null)} />
-          ) : (
-            <div key={item.id} className="group mb-4 resume-section">
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <h4 className="text-[13px] font-semibold text-gray-900 leading-snug">{item.title}</h4>
-                    {item.source === 'ai_suggestion' && (
-                      <span className="inline-flex items-center gap-0.5 text-[10px] italic text-gray-400">
-                        <Sparkles className="w-3 h-3 text-amber-400" /> AI
-                      </span>
-                    )}
-                  </div>
-                  {item.description && (
-                    <div className="mt-1.5 text-xs text-gray-500 leading-relaxed">
-                      {item.description.split('\n').filter(Boolean).map((line, i) => (
-                        <p key={i} className="mb-1">{line}</p>
-                      ))}
+        {type === 'reference' ? (
+          <div className="flex flex-row flex-wrap gap-x-8 gap-y-2">
+            {items.map((item) => (
+              <div key={item.id} className="flex-none w-auto max-w-full">
+                {editingItem?.id === item.id ? (
+                  <InlineItemForm type={type} initialData={item}
+                    onSave={handleSaveItem} onCancel={() => setEditingItem(null)} />
+                ) : (
+                  <div className="group mb-4 resume-section">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <h4 className="text-[13px] font-semibold text-gray-900 leading-snug">{item.title}</h4>
+                          {item.source === 'ai_suggestion' && (
+                            <span className="inline-flex items-center gap-0.5 text-[10px] italic text-gray-400">
+                              <Sparkles className="w-3 h-3 text-amber-400" /> AI
+                            </span>
+                          )}
+                        </div>
+                        {item.description && (
+                          <div className="mt-1.5 text-xs text-gray-500 leading-relaxed">
+                            {item.description.split('\n').filter(Boolean).map((line, i) => (
+                              <p key={i} className="mb-1">{line}</p>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      {/* Date/tags pinned right */}
+                      {item.tags && item.tags.length > 0 && (
+                        <span className="text-[11px] text-gray-400 font-medium whitespace-nowrap shrink-0 mt-0.5">
+                          {item.tags.join(' · ')}
+                        </span>
+                      )}
+                      {isOwn && (
+                        <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 no-print">
+                          <button onClick={() => { setEditingItem(item); setAddingType(null); }} className="p-1 rounded-full hover:bg-gray-100">
+                            <Pencil className="w-3 h-3 text-gray-300" />
+                          </button>
+                          <button onClick={() => handleDeleteItem(item)} className="p-1 rounded-full hover:bg-red-50">
+                            <Trash2 className="w-3 h-3 text-red-300" />
+                          </button>
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
-                {/* Date/tags pinned right */}
-                {item.tags && item.tags.length > 0 && (
-                  <span className="text-[11px] text-gray-400 font-medium whitespace-nowrap shrink-0 mt-0.5">
-                    {item.tags.join(' · ')}
-                  </span>
-                )}
-                {isOwn && (
-                  <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 no-print">
-                    <button onClick={() => { setEditingItem(item); setAddingType(null); }} className="p-1 rounded-full hover:bg-gray-100">
-                      <Pencil className="w-3 h-3 text-gray-300" />
-                    </button>
-                    <button onClick={() => handleDeleteItem(item)} className="p-1 rounded-full hover:bg-red-50">
-                      <Trash2 className="w-3 h-3 text-red-300" />
-                    </button>
                   </div>
                 )}
               </div>
-            </div>
-          )
-        ))}
+            ))}
+          </div>
+        ) : (
+          items.map((item) => (
+            editingItem?.id === item.id ? (
+              <InlineItemForm key={item.id} type={type} initialData={item}
+                onSave={handleSaveItem} onCancel={() => setEditingItem(null)} />
+            ) : (
+              <div key={item.id} className="group mb-4 resume-section">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <h4 className="text-[13px] font-semibold text-gray-900 leading-snug">{item.title}</h4>
+                      {item.source === 'ai_suggestion' && (
+                        <span className="inline-flex items-center gap-0.5 text-[10px] italic text-gray-400">
+                          <Sparkles className="w-3 h-3 text-amber-400" /> AI
+                        </span>
+                      )}
+                    </div>
+                    {item.description && (
+                      <div className="mt-1.5 text-xs text-gray-500 leading-relaxed">
+                        {item.description.split('\n').filter(Boolean).map((line, i) => (
+                          <p key={i} className="mb-1">{line}</p>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  {/* Date/tags pinned right */}
+                  {item.tags && item.tags.length > 0 && (
+                    <span className="text-[11px] text-gray-400 font-medium whitespace-nowrap shrink-0 mt-0.5">
+                      {item.tags.join(' · ')}
+                    </span>
+                  )}
+                  {isOwn && (
+                    <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 no-print">
+                      <button onClick={() => { setEditingItem(item); setAddingType(null); }} className="p-1 rounded-full hover:bg-gray-100">
+                        <Pencil className="w-3 h-3 text-gray-300" />
+                      </button>
+                      <button onClick={() => handleDeleteItem(item)} className="p-1 rounded-full hover:bg-red-50">
+                        <Trash2 className="w-3 h-3 text-red-300" />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )
+          ))
+        )}
 
         {isOwn && items.length === 0 && !isAdding && (
           <p className="text-xs italic text-gray-300 mb-2">No {meta.label.toLowerCase()} added yet.</p>

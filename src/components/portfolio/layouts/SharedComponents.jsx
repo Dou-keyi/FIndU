@@ -3,7 +3,7 @@ import { useState } from 'react';
 import {
   Plus, Loader2, Pencil, Trash2, X, Sparkles, GripHorizontal,
   GraduationCap, Briefcase, Award, ShieldCheck, Languages,
-  Heart, User, FileText
+  Heart, User, FileText, Users, Phone, Mail
 } from 'lucide-react';
 
 /* ─── Section configuration ─── */
@@ -17,19 +17,32 @@ export const SECTION_META = {
   language:      { label: 'Languages',           icon: Languages },
   hobby:         { label: 'Hobbies',             icon: Heart },
   skills:        { label: 'Skills',              icon: Sparkles },
+  reference:     { label: 'References',          icon: Users },
 };
 
 // Sections displayed in the dark left sidebar (Professional layout)
 export const LEFT_SECTIONS  = ['skills', 'language', 'certification'];
 // Sections displayed in the white right content area
-export const RIGHT_SECTIONS = ['summary', 'education', 'experience', 'project', 'achievement', 'hobby'];
+export const RIGHT_SECTIONS = ['summary', 'education', 'experience', 'project', 'achievement', 'hobby', 'reference'];
 // All sections in order
-export const ALL_SECTIONS = ['summary', 'education', 'experience', 'project', 'achievement', 'skills', 'certification', 'language', 'hobby'];
+export const ALL_SECTIONS = ['summary', 'education', 'experience', 'project', 'achievement', 'skills', 'certification', 'language', 'hobby', 'reference'];
 
 /* ─── Inline edit form (compact, for adding/editing items) ─── */
 export function InlineItemForm({ type, initialData, onSave, onCancel }) {
+  const isRef = type === 'reference';
+  
   const [title, setTitle]       = useState(initialData?.title || '');
   const [description, setDesc]  = useState(initialData?.description || '');
+  
+  const descLines = (initialData?.description || '').split('\n');
+  const initialPos = isRef ? (descLines.find(l => l.startsWith('Position: '))?.replace('Position: ', '') || (!descLines[0]?.startsWith('Phone: ') && !descLines[0]?.startsWith('Email: ') ? descLines[0] : '')) : '';
+  const initialPhone = isRef ? descLines.find(l => l.startsWith('Phone: '))?.replace('Phone: ', '') || '' : '';
+  const initialEmail = isRef ? descLines.find(l => l.startsWith('Email: '))?.replace('Email: ', '') || '' : '';
+
+  const [refPosition, setRefPosition] = useState(initialPos);
+  const [refPhone, setRefPhone] = useState(initialPhone);
+  const [refEmail, setRefEmail] = useState(initialEmail);
+
   const [tags, setTags]         = useState(initialData?.tags || []);
   const [tagInput, setTagInput] = useState('');
   const [saving, setSaving]     = useState(false);
@@ -43,6 +56,7 @@ export function InlineItemForm({ type, initialData, onSave, onCancel }) {
     certification: { title: 'Certification name', desc: 'Issuing organisation / details…',          showTags: true, tagHint: 'e.g. 2024' },
     language:      { title: 'Language',          desc: 'Proficiency level (e.g. Fluent, Native)…',  showTags: false },
     hobby:         { title: 'Hobby / Interest',  desc: '',                                          showTags: false },
+    reference:     { title: 'Reference Name',    desc: '',                                          showTags: false },
   };
   const l = labels[type] || labels.project;
 
@@ -62,11 +76,20 @@ export function InlineItemForm({ type, initialData, onSave, onCancel }) {
     if (!title.trim()) return;
     setSaving(true);
     try {
+      let finalDesc = description.trim() || null;
+      if (isRef) {
+        const parts = [];
+        if (refPosition.trim()) parts.push(`Position: ${refPosition.trim()}`);
+        if (refPhone.trim()) parts.push(`Phone: ${refPhone.trim()}`);
+        if (refEmail.trim()) parts.push(`Email: ${refEmail.trim()}`);
+        finalDesc = parts.length > 0 ? parts.join('\n') : null;
+      }
+      
       await onSave?.({
         item_type: type,
         title: title.trim(),
-        description: description.trim() || null,
-        tags,
+        description: finalDesc,
+        tags: isRef ? [] : tags,
         ...(initialData?.id ? { id: initialData.id } : {}),
       });
     } finally { setSaving(false); }
@@ -81,7 +104,31 @@ export function InlineItemForm({ type, initialData, onSave, onCancel }) {
         onChange={(e) => setTitle(e.target.value)}
         autoFocus
       />
-      {l.desc && (
+      {isRef ? (
+        <div className="space-y-2">
+          <input
+            className="w-full px-3 py-1.5 rounded-md border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
+            placeholder="Position (e.g. Former Manager at Tech Corp)"
+            value={refPosition}
+            onChange={(e) => setRefPosition(e.target.value)}
+          />
+          <div className="flex gap-2">
+            <input
+              className="flex-1 px-3 py-1.5 rounded-md border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
+              placeholder="Phone number"
+              value={refPhone}
+              onChange={(e) => setRefPhone(e.target.value)}
+            />
+            <input
+              className="flex-1 px-3 py-1.5 rounded-md border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
+              placeholder="Email address"
+              type="email"
+              value={refEmail}
+              onChange={(e) => setRefEmail(e.target.value)}
+            />
+          </div>
+        </div>
+      ) : l.desc && (
         <textarea
           className="w-full px-3 py-1.5 rounded-md border border-gray-200 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
           placeholder={l.desc}
@@ -161,6 +208,7 @@ export function ResumeSectionHeader({ type, isOwn, onAdd, dark = false, accentCo
 /* ─── Right-column resume item (education, experience, etc.) ─── */
 export function ResumeItem({ item, isOwn, onEdit, onDelete }) {
   const isAI = item.source === 'ai_suggestion';
+  const isRef = item.item_type === 'reference';
   return (
     <div className="group relative mb-4 resume-section">
       <div className="flex items-start justify-between">
@@ -176,7 +224,23 @@ export function ResumeItem({ item, isOwn, onEdit, onDelete }) {
           {item.tags && item.tags.length > 0 && (
             <p className="text-xs text-gray-400 mt-0.5">{item.tags.join(' · ')}</p>
           )}
-          {item.description && (
+          {item.description && isRef ? (
+            <div className="mt-1.5 text-xs text-gray-500 space-y-1">
+              {item.description.split('\n').filter(Boolean).map((line, i) => {
+                let icon = null;
+                if (line.startsWith('Position:')) icon = <Briefcase className="w-3.5 h-3.5 text-gray-400 shrink-0" />;
+                else if (line.startsWith('Phone:')) icon = <Phone className="w-3.5 h-3.5 text-gray-400 shrink-0" />;
+                else if (line.startsWith('Email:')) icon = <Mail className="w-3.5 h-3.5 text-gray-400 shrink-0" />;
+                
+                const text = line.replace(/^(Position|Phone|Email):\s*/, '');
+                return (
+                  <p key={i} className="flex items-center gap-1.5">
+                    {icon} <span>{text}</span>
+                  </p>
+                );
+              })}
+            </div>
+          ) : item.description && (
             <ul className="resume-content-list mt-1.5">
               {item.description.split('\n').filter(Boolean).map((line, i) => (
                 <li key={i}>{line}</li>

@@ -16,13 +16,29 @@ const DraggableSection = ({ type, renderContent, isLeft }) => {
       dragListener={false} 
       dragControls={dragControls} 
       className={`relative z-0 list-none rounded-xl ${isLeft ? '' : 'bg-white'}`}
+      initial={{ 
+        scale: 1, 
+        boxShadow: '0 0px 0px 0px rgba(0,0,0,0)', 
+        zIndex: 0, 
+        opacity: 1,
+        backgroundColor: isLeft ? 'rgba(0,0,0,0)' : '#ffffff',
+        backdropFilter: 'blur(0px)'
+      }}
+      animate={{ 
+        scale: 1, 
+        boxShadow: '0 0px 0px 0px rgba(0,0,0,0)', 
+        zIndex: 0, 
+        opacity: 1,
+        backgroundColor: isLeft ? 'rgba(0,0,0,0)' : '#ffffff',
+        backdropFilter: 'blur(0px)'
+      }}
       whileDrag={{ 
         scale: 1.02, 
         boxShadow: isLeft ? '0 25px 50px -12px rgb(0 0 0 / 0.5)' : '0 25px 50px -12px rgb(0 0 0 / 0.15)', 
         zIndex: 50, 
         opacity: 0.95,
         backgroundColor: isLeft ? 'rgba(31, 41, 55, 0.8)' : '#ffffff',
-        backdropFilter: isLeft ? 'blur(8px)' : 'none',
+        backdropFilter: isLeft ? 'blur(8px)' : 'blur(0px)',
         cursor: 'grabbing'
       }}
       transition={{ 
@@ -135,16 +151,33 @@ export default function ProfessionalLayout({
         <ResumeSectionHeader type={type} isOwn={isOwn} accentColor={activeAccent} dragControls={dragControls}
           onAdd={() => { setAddingType(type); setEditingItem(null); }} />
 
-        {items.map((item) => (
-          editingItem?.id === item.id ? (
-            <InlineItemForm key={item.id} type={type} initialData={item}
-              onSave={handleSaveItem} onCancel={() => setEditingItem(null)} />
-          ) : (
-            <ResumeItem key={item.id} item={item} isOwn={isOwn}
-              onEdit={(it) => { setEditingItem(it); setAddingType(null); }}
-              onDelete={handleDeleteItem} />
-          )
-        ))}
+        {type === 'reference' ? (
+          <div className="flex flex-row flex-wrap gap-x-8 gap-y-2">
+            {items.map((item) => (
+              <div key={item.id} className="flex-none w-auto max-w-full">
+                {editingItem?.id === item.id ? (
+                  <InlineItemForm type={type} initialData={item}
+                    onSave={handleSaveItem} onCancel={() => setEditingItem(null)} />
+                ) : (
+                  <ResumeItem item={item} isOwn={isOwn}
+                    onEdit={(it) => { setEditingItem(it); setAddingType(null); }}
+                    onDelete={handleDeleteItem} />
+                )}
+              </div>
+            ))}
+          </div>
+        ) : (
+          items.map((item) => (
+            editingItem?.id === item.id ? (
+              <InlineItemForm key={item.id} type={type} initialData={item}
+                onSave={handleSaveItem} onCancel={() => setEditingItem(null)} />
+            ) : (
+              <ResumeItem key={item.id} item={item} isOwn={isOwn}
+                onEdit={(it) => { setEditingItem(it); setAddingType(null); }}
+                onDelete={handleDeleteItem} />
+            )
+          ))
+        )}
 
         {isOwn && items.length === 0 && !isAdding && (
           <p className="text-xs italic text-gray-300 mb-2">

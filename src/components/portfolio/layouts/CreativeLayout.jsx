@@ -19,6 +19,8 @@ const DraggableSection = ({ type, renderContent }) => {
       dragListener={false} 
       dragControls={dragControls} 
       className="relative z-0 list-none rounded-2xl bg-white"
+      initial={{ scale: 1, boxShadow: '0 0px 0px 0px rgba(0,0,0,0)', zIndex: 0, opacity: 1 }}
+      animate={{ scale: 1, boxShadow: '0 0px 0px 0px rgba(0,0,0,0)', zIndex: 0, opacity: 1 }}
       whileDrag={{ 
         scale: 1.02, 
         boxShadow: '0 25px 50px -12px rgb(0 0 0 / 0.15)', 
@@ -260,6 +262,21 @@ export default function CreativeLayout({
                   )}
                 </div>
               )
+            ))}
+          </div>
+        ) : type === 'reference' ? (
+          <div className="flex flex-row flex-wrap gap-x-8 gap-y-2">
+            {items.map((item) => (
+              <div key={item.id} className="flex-none w-auto max-w-full">
+                {editingItem?.id === item.id ? (
+                  <InlineItemForm type={type} initialData={item}
+                    onSave={handleSaveItem} onCancel={() => setEditingItem(null)} />
+                ) : (
+                  <ResumeItem item={item} isOwn={isOwn}
+                    onEdit={(it) => { setEditingItem(it); setAddingType(null); }}
+                    onDelete={handleDeleteItem} />
+                )}
+              </div>
             ))}
           </div>
         ) : (
