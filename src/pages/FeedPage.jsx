@@ -220,6 +220,10 @@ export default function FeedPage() {
       } else if (sortBy === 'closest') {
         // Mock sorting by proximity if location exists. In real app, this requires PostGIS
         query = query.order('created_at', { ascending: false }); 
+      } else {
+        // Default 'recommended' or any other unhandled sort
+        // In a real app, recommended would use an AI algorithm, but here we fallback to latest + some engagement weight
+        query = query.order('created_at', { ascending: false });
       }
 
       const { data, error } = await query;
@@ -392,6 +396,11 @@ export default function FeedPage() {
       </button>
 
       {/* ─── GLOBALLY MOUNTED SHEETS / MODALS ─── */}
+      <PostComposerSheet 
+        isOpen={composerOpen}
+        onClose={() => setComposerOpen(false)}
+        onPostCreated={(newPost) => useFeedStore.getState().prependPosts([newPost])}
+      />
 
       {/* DM Panel */}
       <DMPanel />

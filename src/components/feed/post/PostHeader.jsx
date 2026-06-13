@@ -26,8 +26,8 @@ export default function PostHeader({
   const [followLoading, setFollowLoading] = useState(false);
 
   const isCompanyPost = post.post_type === 'company';
-  const author = post.author;
-  const company = post.company;
+  const author = Array.isArray(post.author) ? post.author[0] : post.author;
+  const company = Array.isArray(post.company) ? post.company[0] : post.company;
 
   const displayName = isCompanyPost ? company?.name : author?.full_name;
   const displaySubtext = isCompanyPost ? 'Company' : author?.headline;

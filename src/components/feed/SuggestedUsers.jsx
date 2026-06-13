@@ -16,7 +16,7 @@ export default function SuggestedUsers() {
       try {
         // 1. Get who we are following
         const { data: followingData } = await supabase
-          .from('followers')
+          .from('user_follows')
           .select('following_id')
           .eq('follower_id', user.id);
           
@@ -106,7 +106,7 @@ export default function SuggestedUsers() {
                 title="Follow"
                 onClick={async () => {
                   // Optimistic follow UI would go here in a real implementation
-                  await supabase.from('followers').insert({ follower_id: user.id, following_id: profile.id });
+                  await supabase.from('user_follows').insert({ follower_id: user.id, following_id: profile.id });
                   setSuggestions(prev => prev.filter(p => p.id !== profile.id));
                 }}
               >
