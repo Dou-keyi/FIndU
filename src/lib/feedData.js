@@ -102,7 +102,7 @@ export async function getFeedJobs(userProfile) {
 /**
  * Create a new post
  */
-export async function createPost(userId, content, hashtags, postType, companyId = null, jobId = null) {
+export async function createPost(userId, content, hashtags, postType, companyId = null, jobId = null, quotedPostId = null) {
   try {
     // Normalise hashtags — strip # prefix for storage
     const cleanTags = (hashtags || []).map((t) => t.replace(/^#/, '').trim()).filter(Boolean);
@@ -116,12 +116,18 @@ export async function createPost(userId, content, hashtags, postType, companyId 
         hashtags: cleanTags,
         post_type: postType,
         job_id: jobId,
+        quoted_post_id: quotedPostId,
       })
       .select(`
         *,
         author:profiles!author_id(id, full_name, headline, avatar_url, skills, role),
         company:companies!company_id(id, name, logo_url, owner_id),
-        job:jobs!job_id(id, title, work_type, experience_level, location, status)
+        job:jobs!job_id(id, title, work_type, experience_level, location, status),
+        quoted_post:posts!quoted_post_id(
+          *,
+          author:profiles!author_id(id, full_name, headline, avatar_url, skills, role),
+          company:companies!company_id(id, name, logo_url)
+        )
       `)
       .single();
 

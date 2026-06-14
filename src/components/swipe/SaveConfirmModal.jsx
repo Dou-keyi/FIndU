@@ -1,12 +1,10 @@
-// ApplyConfirmSheet.jsx — centered popup card confirming application was sent (or already applied)
+// SaveConfirmModal.jsx — centered popup card confirming job was saved
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CheckCircle2, AlertCircle } from 'lucide-react';
+import { Star } from 'lucide-react';
 
-export default function ApplyConfirmSheet({ node, isOpen, onClose }) {
+export default function SaveConfirmModal({ node, isOpen, onClose }) {
   if (!node) return null;
-
-  const isAlreadyApplied = node.already_applied;
 
   return (
     <AnimatePresence>
@@ -39,51 +37,29 @@ export default function ApplyConfirmSheet({ node, isOpen, onClose }) {
                 transition={{ type: 'spring', delay: 0.1, stiffness: 300, damping: 20 }}
                 className="mx-auto mb-5"
               >
-                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-emerald-50 border-4 border-emerald-100 shadow-sm">
-                  <CheckCircle2 className="w-8 h-8 text-emerald-500" />
+                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-amber-50 border-4 border-amber-100 shadow-sm">
+                  <Star className="w-8 h-8 text-amber-500 fill-amber-500" />
                 </div>
               </motion.div>
 
               {/* Title & Message */}
               <h3 className="text-xl font-bold text-gray-900 mb-2">
-                {isAlreadyApplied ? 'Already Applied' : 'Application Sent!'}
+                Job Saved!
               </h3>
               
               <p className="text-sm text-gray-500 mb-6 leading-relaxed">
-                {isAlreadyApplied ? (
-                  <>
-                    You have already submitted an application to{' '}
-                    <span className="font-semibold text-gray-800">
-                      {node.company_name || node.sublabel}
-                    </span>.
-                  </>
-                ) : (
-                  <>
-                    Your application has been successfully sent to{' '}
-                    <span className="font-semibold text-gray-800">
-                      {node.company_name || node.sublabel}
-                    </span>.
-                  </>
-                )}
+                You have successfully saved the job at{' '}
+                <span className="font-semibold text-gray-800">
+                  {node.company_name || node.sublabel}
+                </span>. You can review it later in your saved list.
               </p>
-
-              {/* AI match reason (only if just applied) */}
-              {!isAlreadyApplied && node.matchReason && (
-                <div className="p-4 bg-brand-50/50 rounded-2xl border border-brand-100/50 mb-6 text-left shadow-inner">
-                  <p className="text-[11px] text-gray-400 mb-1.5 font-bold tracking-wide uppercase">Insight included</p>
-                  <p className="text-[13px] text-brand-700 font-medium leading-relaxed">
-                    <span className="text-brand mr-1">✦</span>
-                    {node.matchReason}
-                  </p>
-                </div>
-              )}
 
               {/* Action Button */}
               <button
                 onClick={onClose}
                 className="w-full py-3.5 px-4 rounded-xl text-white text-sm font-bold shadow-md transition-all active:scale-[0.98] bg-brand hover:bg-brand-dark"
               >
-                {isAlreadyApplied ? 'Got it' : 'Continue'}
+                Continue
               </button>
             </div>
           </motion.div>

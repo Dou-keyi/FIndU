@@ -16,6 +16,7 @@ import { supabase } from '../lib/supabase';
 
 // --- Sub-components ---
 import FeedSearchBar from '../components/feed/FeedSearchBar';
+import SuggestedUsers from '../components/feed/SuggestedUsers';
 import FeedFilters from '../components/feed/FeedFilters';
 import NewPostsPill from '../components/feed/NewPostsPill';
 import PostCard from '../components/feed/post/PostCard';
@@ -96,6 +97,25 @@ export default function FeedPage() {
   const [peekUser, setPeekUser] = useState(null);
   const [peekAnchor, setPeekAnchor] = useState(null);
   const peekTimer = useRef(null);
+
+  // Auto-hide search bar on scroll
+  const [showSearch, setShowSearch] = useState(true);
+  const lastScrollY = useRef(0);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY;
+      if (currentScrollY > lastScrollY.current && currentScrollY > 100) {
+        setShowSearch(false);
+      } else if (currentScrollY < lastScrollY.current || currentScrollY <= 100) {
+        setShowSearch(true);
+      }
+      lastScrollY.current = currentScrollY;
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   // Initialize Global Hooks
   useFeedRealtime();
@@ -200,6 +220,10 @@ export default function FeedPage() {
       } else if (sortBy === 'closest') {
         // Mock sorting by proximity if location exists. In real app, this requires PostGIS
         query = query.order('created_at', { ascending: false }); 
+      } else {
+        // Default 'recommended' or any other unhandled sort
+        // In a real app, recommended would use an AI algorithm, but here we fallback to latest + some engagement weight
+        query = query.order('created_at', { ascending: false });
       }
 
       const { data, error } = await query;
@@ -283,7 +307,11 @@ export default function FeedPage() {
         </div>
 
         {/* Filters & Search */}
-        <div className="sticky top-[105px] lg:top-20 z-30 bg-white/95 backdrop-blur-md border-b border-gray-100 pb-2 pt-2 lg:pt-0 -mx-4 px-4 lg:mx-0 lg:px-0 lg:border-none lg:bg-transparent flex flex-col gap-2">
+        <div 
+          className={`sticky z-30 bg-white/95 backdrop-blur-md border-b border-gray-100 pb-2 pt-2 lg:pt-0 -mx-4 px-4 lg:mx-0 lg:px-0 lg:border-none lg:bg-transparent flex flex-col gap-2 transition-all duration-300 ${
+            showSearch ? 'top-[105px] lg:top-20 translate-y-0 opacity-100' : 'top-[105px] lg:top-20 -translate-y-full opacity-0 pointer-events-none'
+          }`}
+        >
           <FeedSearchBar />
           <FeedFilters />
         </div>
@@ -340,20 +368,8 @@ export default function FeedPage() {
 
       {/* ─── DESKTOP RIGHT SIDEBAR ─── */}
       <aside className="hidden lg:flex flex-col gap-6 sticky top-24">
-        {/* Placeholder for trending tags, suggested connections, etc. */}
-        <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
-          <h3 className="text-sm font-bold text-gray-900 mb-4 flex items-center gap-2">
-            Trending <Sparkles className="w-4 h-4 text-amber-500" />
-          </h3>
-          <div className="space-y-3">
-            {['#hiring', '#reactjs', '#design', '#frontend'].map((tag) => (
-              <a href={`/feed?hashtag=${encodeURIComponent(tag.replace('#', ''))}`} key={tag} className="flex justify-between items-center group">
-                <span className="text-sm font-semibold text-gray-600 group-hover:text-violet-600 transition-colors">{tag}</span>
-                <span className="text-xs text-gray-400">🔥</span>
-              </a>
-            ))}
-          </div>
-        </div>
+        {/* Suggested connections */}
+        <SuggestedUsers />
 
         {/* Footer links */}
         <div className="text-xs text-gray-400 font-medium flex flex-wrap gap-x-3 gap-y-2 px-2">
@@ -380,6 +396,11 @@ export default function FeedPage() {
       </button>
 
       {/* ─── GLOBALLY MOUNTED SHEETS / MODALS ─── */}
+      <PostComposerSheet 
+        isOpen={composerOpen}
+        onClose={() => setComposerOpen(false)}
+        onPostCreated={(newPost) => useFeedStore.getState().prependPosts([newPost])}
+      />
 
       {/* DM Panel */}
       <DMPanel />

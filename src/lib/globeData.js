@@ -149,10 +149,10 @@ export async function getEmployerGlobeNodes(profile) {
       return [];
     }
 
-    // 3. Fetch all candidate profiles
+    // 3. Fetch all candidate profiles with their portfolio items
     const { data: candidates, error: candError } = await supabase
       .from('profiles')
-      .select('*')
+      .select('*, portfolio_items(*)')
       .eq('role', 'candidate');
 
     if (candError) throw candError;
@@ -183,6 +183,7 @@ export async function getEmployerGlobeNodes(profile) {
         location: c.location,
         skills: c.skills || [],
         work_type: c.work_type,
+        achievements: (c.portfolio_items || []).filter(item => item.item_type === 'achievement'),
         matchScore: computeMatchScore(
           c.skills,
           activeJob.skills_required,

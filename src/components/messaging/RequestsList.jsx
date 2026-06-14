@@ -72,9 +72,18 @@ export default function RequestsList({ requests, onAccept, onDecline, loading })
                       <p className="text-[11px] text-slate-400 truncate">{sender?.headline}</p>
                     </div>
 
-                    {/* Job context */}
-                    {jobContext && (
-                      <p className="text-[11px] text-brand font-medium mt-1 truncate">{jobContext}</p>
+                    {/* Job context & Portfolio Badge */}
+                    {(jobContext || req.includes_portfolio_card) && (
+                      <div className="flex items-center gap-2 mt-1">
+                        {jobContext && (
+                          <p className="text-[11px] text-brand font-medium truncate">{jobContext}</p>
+                        )}
+                        {req.includes_portfolio_card && (
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-medium bg-brand/10 text-brand border border-brand/20 whitespace-nowrap">
+                            Portfolio Attached
+                          </span>
+                        )}
+                      </div>
                     )}
 
                     {/* Intro message */}

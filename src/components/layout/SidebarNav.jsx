@@ -1,17 +1,17 @@
 // SidebarNav.jsx — Desktop navigation sidebar (md:flex)
 import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Globe2, Newspaper, FileText, MessageSquare, Clock, LogOut, PlusCircle, Users } from 'lucide-react';
+import { Globe2, Newspaper, FileText, MessageSquare, Clock, LogOut, PlusCircle, Building2, Users } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { supabase } from '../../lib/supabase';
 import { getInitials, getAvatarColor } from '../../lib/avatarUtils';
 import LogoutConfirmModal from './LogoutConfirmModal';
 import NotificationsBell from '../NotificationsBell';
 
-const NAV_ITEMS = [
+const getNavItems = (role) => [
   { path: '/globe', icon: Globe2, label: 'Jobs' },
   { path: '/feed', icon: Newspaper, label: 'Feed' },
-  { path: '/portfolio', icon: FileText, label: 'Portfolio' },
+  { path: '/portfolio', icon: role === 'employer' ? Building2 : FileText, label: role === 'employer' ? 'Company' : 'Portfolio' },
   { path: '/messaging', icon: MessageSquare, label: 'Messages' },
   { path: '/tracking', icon: Clock, label: 'Track' },
 ];
@@ -19,7 +19,7 @@ const NAV_ITEMS = [
 export default function SidebarNav() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { profile, user } = useAuth();
+  const { profile, user, signOut } = useAuth();
   const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   const handleLogoutClick = () => {
@@ -28,7 +28,7 @@ export default function SidebarNav() {
 
   const handleLogoutConfirm = async () => {
     setShowLogoutModal(false);
-    await supabase.auth.signOut();
+    await signOut();
     navigate('/auth');
   };
 
@@ -50,7 +50,7 @@ export default function SidebarNav() {
 
       {/* Navigation Links */}
       <nav className="flex-1 px-4 space-y-1 overflow-y-auto">
-        {NAV_ITEMS.map(({ path, icon: Icon, label }) => {
+        {getNavItems(profile?.role).map(({ path, icon: Icon, label }) => {
           const isActive = path === '/portfolio'
             ? location.pathname.startsWith('/portfolio') || location.pathname.startsWith('/company')
             : location.pathname === path;

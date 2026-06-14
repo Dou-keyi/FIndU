@@ -1,5 +1,5 @@
 // PostCard.jsx — fully rebuilt social post card with all features
-import React, { useState, forwardRef, Suspense, lazy } from 'react';
+import React, { useState, forwardRef, Suspense, lazy, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Repeat2, Award, Calendar, Sparkles } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -127,6 +127,31 @@ const PostCard = forwardRef(function PostCard({ post, index, isNested = false },
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(post.content || '');
   const [isSaving, setIsSaving] = useState(false);
+
+  // Robust Quoted Post resolution
+  // Supabase PostgREST struggles with self-referencing joins and often returns children instead of parents
+  // or fails the join completely. If so, we manually fetch it.
+  const [resolvedQuotedPost, setResolvedQuotedPost] = useState(() => {
+    if (post.quoted_post && !Array.isArray(post.quoted_post)) return post.quoted_post;
+    return null;
+  });
+
+  useEffect(() => {
+    if (post.quoted_post_id && !resolvedQuotedPost) {
+      supabase
+        .from('posts')
+        .select(`
+          *,
+          author:profiles!author_id(id, full_name, headline, avatar_url, skills, role),
+          company:companies!company_id(id, name, logo_url)
+        `)
+        .eq('id', post.quoted_post_id)
+        .single()
+        .then(({ data, error }) => {
+          if (data && !error) setResolvedQuotedPost(data);
+        });
+    }
+  }, [post.quoted_post_id, resolvedQuotedPost]);
 
   const handleEditSave = async () => {
     if (!editContent.trim() || editContent === post.content) {
@@ -304,9 +329,12 @@ const PostCard = forwardRef(function PostCard({ post, index, isNested = false },
       )}
 
       {/* Quoted post (for quote reposts) */}
-      {isQuoteRepost && post.quoted_post && (
+      {resolvedQuotedPost && (
         <div className="border border-gray-100 rounded-xl mt-1 mb-3 overflow-hidden">
-          <PostCard post={post.quoted_post} isNested />
+          <PostCard 
+            post={resolvedQuotedPost} 
+            isNested 
+          />
         </div>
       )}
 
@@ -314,7 +342,7 @@ const PostCard = forwardRef(function PostCard({ post, index, isNested = false },
       {postType === POST_TYPES.JOB && post.job && (
         <div className="mb-3">
           <FeedJobCard 
-            job={post.job} 
+            job={Array.isArray(post.job) ? post.job[0] : post.job} 
             onViewDetail={(j) => navigate(`/jobs/${j.id}`)}
             onApply={async (j) => {
               const { applyToJob } = await import('../../../lib/trackingData');

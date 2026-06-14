@@ -53,7 +53,8 @@ export default function MessagingPage() {
         content: req.intro_message,
         sender_id: user.id,
         seen: true,
-        sent_at: req.created_at
+        sent_at: req.created_at,
+        includes_portfolio_card: req.includes_portfolio_card
       }]
     }));
 
@@ -163,6 +164,7 @@ export default function MessagingPage() {
   // Find active thread data
   const activeThread = threads.find((t) => t.id === activeThreadId);
   let otherParty = null;
+  let companyContext = null;
   let jobContext = null;
   if (activeThreadId === 'new_draft' && draftContext) {
     otherParty = draftContext.targetProfile;
@@ -171,6 +173,7 @@ export default function MessagingPage() {
     otherParty = role === 'candidate' ? activeThread.match.employer : activeThread.match.candidate;
     const job = activeThread.match.job;
     jobContext = job ? `${job.title}${job.company?.name ? ` · ${job.company.name}` : ''}` : null;
+    companyContext = job?.company;
   }
 
   return (
@@ -290,6 +293,7 @@ export default function MessagingPage() {
               initialMessages={activeThread?.isRequest ? activeThread.messages : null}
               otherParty={otherParty}
               jobContext={jobContext}
+              companyContext={companyContext}
               userId={user?.id}
               onBack={handleBackToList}
               onThreadUpdate={loadData}

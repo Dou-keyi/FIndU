@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Star, Check, RotateCcw } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import SwipeCard from './SwipeCard';
-import JobSelectionModal from './JobSelectionModal';
+import EmployerMessageModal from './EmployerMessageModal';
 import { toast } from '../ui/use-toast';
 
 /**
@@ -27,7 +27,7 @@ function DirectionOverlay({ dragX, dragY, role }) {
         <div className="absolute top-5 right-5 z-20 px-4 py-2 rounded-xl border-2 border-emerald-400 bg-emerald-50/90 backdrop-blur-sm">
           <span className="text-emerald-600 font-bold text-sm tracking-wider uppercase">
             {/* eslint-disable-next-line react/prop-types */}
-            {role === 'candidate' ? 'Apply' : 'Shortlist'}
+            {role === 'candidate' ? 'Apply' : 'Connect'}
           </span>
         </div>
       )}
@@ -51,6 +51,7 @@ export default function SwipeStack({
   onShowJobDetail,
   onShowCandidateDetail,
   onApplyConfirm,
+  onSaveConfirm,
   onMutualMatch,
   onAllCaughtUp,
 }) {
@@ -59,7 +60,8 @@ export default function SwipeStack({
   const [isDragging, setIsDragging] = useState(false);
   const [exitDirection, setExitDirection] = useState(null); // 'left' | 'right' | 'up'
   const [isProcessing, setIsProcessing] = useState(false);
-  const [pendingJobSelectNode, setPendingJobSelectNode] = useState(null);
+  const [pendingEmployerMessageNode, setPendingEmployerMessageNode] = useState(null);
+  const [pendingEmployerMessageJobId, setPendingEmployerMessageJobId] = useState(null);
 
   useEffect(() => {
     if (queue.length === 0 && onAllCaughtUp) {
@@ -74,7 +76,7 @@ export default function SwipeStack({
    * Handle swipe action — write to Supabase and advance queue
    */
   const handleSwipe = useCallback(
-    async (direction, overrideJobId = activeJobId) => {
+    async (direction, overrideJobId = activeJobId, customMessage = '', includePortfolio = false) => {
       if (isProcessing || queue.length === 0) return;
       setIsProcessing(true);
 
@@ -86,21 +88,33 @@ export default function SwipeStack({
         setExitDirection(direction);
 
         // 2. Write swipe_action to Supabase
-        await supabase.from('swipe_actions').insert({
+        const { error: swipeError } = await supabase.from('swipe_actions').insert({
           actor_id: user.id,
           target_type: role === 'candidate' ? 'job' : 'candidate',
           target_id: node.id,
           direction,
         });
 
+        if (swipeError && swipeError.code !== '23505') throw swipeError;
+
+        let isAlreadyApplied = false;
+
         // 3. If candidate swiped right → create application
         if (role === 'candidate' && direction === 'right') {
-          await supabase.from('applications').insert({
+          const { error: appError } = await supabase.from('applications').insert({
             job_id: node.id,
             candidate_id: user.id,
             status: 'applied',
             ai_context: node.matchReason,
           });
+
+          if (appError) {
+            if (appError.code === '23505') {
+              isAlreadyApplied = true;
+            } else {
+              throw appError;
+            }
+          }
 
           // Check if employer already sent a request message
           const { data: request } = await supabase
@@ -111,7 +125,7 @@ export default function SwipeStack({
             .eq('status', 'pending')
             .maybeSingle();
 
-          if (request) {
+          if (request && !isAlreadyApplied) {
             // Mutual Match via existing request
             const { data: match } = await supabase.from('matches').insert({
               candidate_id: user.id,
@@ -141,7 +155,7 @@ export default function SwipeStack({
           } else {
             // Show confirmation after a brief delay for animation
             setTimeout(() => {
-              onApplyConfirm?.(node);
+              onApplyConfirm?.({ ...node, already_applied: isAlreadyApplied });
             }, 400);
           }
         }
@@ -158,7 +172,18 @@ export default function SwipeStack({
             .eq('direction', 'right')
             .maybeSingle();
 
-          if (candidateSwipe) {
+          // ALSO check if candidate has sent a message request
+          const { data: candidateRequests } = await supabase
+            .from('message_requests')
+            .select('id, intro_message')
+            .eq('sender_id', node.id)
+            .eq('recipient_id', user.id)
+            .eq('status', 'pending')
+            .limit(1);
+          
+          const candidateRequest = candidateRequests?.[0];
+
+          if (candidateSwipe || candidateRequest) {
             // Mutual match!
             const { data: match } = await supabase.from('matches').insert({
               candidate_id: node.id,
@@ -172,15 +197,27 @@ export default function SwipeStack({
               }).select().single();
 
               if (thread) {
-                const { data: job } = await supabase.from('jobs').select('title, company:companies(name)').eq('id', targetJobId).single();
+                // If candidate had a pending request, insert their original message into the thread and accept it
+                if (candidateRequest && candidateRequest.intro_message) {
+                  await supabase.from('messages').insert({
+                    thread_id: thread.id,
+                    sender_id: node.id, // Candidate is sender
+                    content: candidateRequest.intro_message,
+                  });
+                  // Mark the request as accepted
+                  await supabase.from('message_requests').update({ status: 'accepted' }).eq('id', candidateRequest.id);
+                }
+
+                const { data: job } = await supabase.from('jobs').select('title, company:companies(name)').eq('id', targetJobId).maybeSingle();
                 const companyName = job?.company?.name || 'our company';
                 const jobTitle = job?.title || 'the role';
-                const introMessage = `Hi, we are ${companyName} and we are interested in hiring you for the ${jobTitle} role. Are you available for an interview anytime soon?`;
+                const introMessage = customMessage.trim() || `Hi, we are ${companyName} and we are interested in hiring you for the ${jobTitle} role. Are you available for an interview anytime soon?`;
 
                 await supabase.from('messages').insert({
                   thread_id: thread.id,
                   sender_id: user.id,
                   content: introMessage,
+                  includes_portfolio_card: includePortfolio
                 });
               }
             }
@@ -190,10 +227,10 @@ export default function SwipeStack({
             }, 400);
           } else {
             // No mutual match yet, send a message request
-            const { data: job } = await supabase.from('jobs').select('title, company:companies(name)').eq('id', targetJobId).single();
+            const { data: job } = await supabase.from('jobs').select('title, company:companies(name)').eq('id', targetJobId).maybeSingle();
             const companyName = job?.company?.name || 'our company';
             const jobTitle = job?.title || 'the role';
-            const introMessage = `Hi, we are '${companyName}' and we are interested in hiring you for '${jobTitle}'. Are you available for an interview anytime soon?`;
+            const introMessage = customMessage.trim() || `Hi, we are '${companyName}' and we are interested in hiring you for '${jobTitle}'. Are you available for an interview anytime soon?`;
 
             const { data: existingReq } = await supabase.from('message_requests')
               .select('id')
@@ -207,7 +244,8 @@ export default function SwipeStack({
                 sender_id: user.id,
                 recipient_id: node.id,
                 job_id: targetJobId,
-                intro_message: introMessage
+                intro_message: introMessage,
+                includes_portfolio_card: includePortfolio
               });
 
               toast({
@@ -221,10 +259,19 @@ export default function SwipeStack({
 
         // 5. If swiped up → save job (candidate only)
         if (role === 'candidate' && direction === 'up') {
-          await supabase.from('saved_jobs').insert({
+          const { error: saveError } = await supabase.from('saved_jobs').insert({
             candidate_id: user.id,
             job_id: node.id,
           });
+
+          // Ignore duplicate save error (23505) but still show the popup
+          if (saveError && saveError.code !== '23505') {
+            throw saveError;
+          }
+
+          setTimeout(() => {
+            onSaveConfirm?.(node);
+          }, 400);
         }
 
         // 6. Advance queue after animation
@@ -260,8 +307,9 @@ export default function SwipeStack({
         if (mx < -80) {
           handleSwipe('left');
         } else if (mx > 80) {
-          if (role === 'employer' && employerJobs && employerJobs.length > 1) {
-            setPendingJobSelectNode(queue[0]);
+          if (role === 'employer') {
+            setPendingEmployerMessageNode(queue[0]);
+            setPendingEmployerMessageJobId(activeJobId || (employerJobs && employerJobs.length > 0 ? employerJobs[0].id : null)); // Use active context or first available job
           } else {
             handleSwipe('right', activeJobId);
           }
@@ -406,18 +454,19 @@ export default function SwipeStack({
           <Star className="w-5 h-5" strokeWidth={2.5} />
         </button>
 
-        {/* Apply / Shortlist — green */}
+        {/* Apply / Connect — green */}
         <button
           onClick={() => {
-            if (role === 'employer' && employerJobs && employerJobs.length > 1) {
-              setPendingJobSelectNode(queue[0]);
+            if (role === 'employer') {
+              setPendingEmployerMessageNode(queue[0]);
+              setPendingEmployerMessageJobId(activeJobId || (employerJobs && employerJobs.length > 0 ? employerJobs[0].id : null)); // Use active context or first available job
             } else {
               handleSwipe('right', activeJobId);
             }
           }}
           disabled={isProcessing}
           className="flex items-center justify-center w-14 h-14 rounded-full bg-white border-2 border-emerald-200 text-emerald-500 shadow-lg hover:bg-emerald-50 hover:border-emerald-300 hover:text-emerald-600 hover:scale-110 active:scale-95 transition-all duration-200 disabled:opacity-50"
-          aria-label={role === 'candidate' ? 'Apply' : 'Shortlist'}
+          aria-label={role === 'candidate' ? 'Apply' : 'Connect'}
         >
           <Check className="w-6 h-6" strokeWidth={2.5} />
         </button>
@@ -428,15 +477,17 @@ export default function SwipeStack({
         Swipe or tap buttons · {queue.length} remaining
       </p>
 
-      {/* Job Selection Modal for Employers */}
-      <JobSelectionModal
-        isOpen={!!pendingJobSelectNode}
-        onClose={() => setPendingJobSelectNode(null)}
-        jobs={employerJobs}
-        candidateName={pendingJobSelectNode?.full_name || 'candidate'}
-        onSelectJob={(selectedJobId) => {
-          setPendingJobSelectNode(null);
-          handleSwipe('right', selectedJobId);
+      {/* Custom Message Modal for Employers */}
+      <EmployerMessageModal
+        isOpen={!!pendingEmployerMessageNode}
+        onClose={() => {
+          setPendingEmployerMessageNode(null);
+          setPendingEmployerMessageJobId(null);
+        }}
+        candidateName={pendingEmployerMessageNode?.full_name || 'candidate'}
+        onConfirm={(customMessage, includePortfolioCard) => {
+          setPendingEmployerMessageNode(null);
+          handleSwipe('right', pendingEmployerMessageJobId, customMessage, includePortfolioCard);
         }}
       />
     </div>

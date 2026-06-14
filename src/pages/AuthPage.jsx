@@ -31,14 +31,16 @@ export default function AuthPage() {
   const [transitioning, setTransitioning] = useState(false);
   const setJustLoggedIn = useAuthStore((s) => s.setJustLoggedIn);
 
-  // If already authenticated, redirect
+  // If already authenticated and not transitioning, redirect
   useEffect(() => {
+    if (transitioning) return;
+    
     if (user && profile?.onboarding_complete) {
       navigate('/globe', { replace: true });
     } else if (user && profile && !profile.onboarding_complete) {
       navigate('/onboarding', { replace: true });
     }
-  }, [user, profile, navigate]);
+  }, [user, profile, navigate, transitioning]);
 
   function validate() {
     const newErrors = {};
@@ -125,7 +127,7 @@ export default function AuthPage() {
         setJustLoggedIn(true);
         setTransitioning(true);
         await new Promise((r) => setTimeout(r, 1500));
-        navigate('/');
+        navigate('/globe', { replace: true });
       }
     } catch (err) {
       console.error('Auth error:', err);

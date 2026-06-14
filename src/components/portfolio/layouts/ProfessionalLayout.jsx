@@ -1,28 +1,146 @@
 // ProfessionalLayout.jsx — Two-column sidebar resume layout (the original/default)
 import React from 'react';
 import { Loader2, Pencil, Check, X, Camera, Plus, Trash2 } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { motion, Reorder, useDragControls } from 'framer-motion';
 import {
   SECTION_META, LEFT_SECTIONS, RIGHT_SECTIONS,
   InlineItemForm, ResumeSectionHeader, ResumeItem, SidebarItem
 } from './SharedComponents';
 
+const DraggableSection = ({ type, renderContent, isLeft }) => {
+  const dragControls = useDragControls();
+  return (
+    <Reorder.Item 
+      value={type} 
+      id={type} 
+      dragListener={false} 
+      dragControls={dragControls} 
+      className={`relative z-0 list-none rounded-xl ${isLeft ? '' : 'bg-white'}`}
+      initial={{ 
+        scale: 1, 
+        boxShadow: '0 0px 0px 0px rgba(0,0,0,0)', 
+        zIndex: 0, 
+        opacity: 1,
+        backgroundColor: isLeft ? 'rgba(0,0,0,0)' : '#ffffff',
+        backdropFilter: 'blur(0px)'
+      }}
+      animate={{ 
+        scale: 1, 
+        boxShadow: '0 0px 0px 0px rgba(0,0,0,0)', 
+        zIndex: 0, 
+        opacity: 1,
+        backgroundColor: isLeft ? 'rgba(0,0,0,0)' : '#ffffff',
+        backdropFilter: 'blur(0px)'
+      }}
+      whileDrag={{ 
+        scale: 1.02, 
+        boxShadow: isLeft ? '0 25px 50px -12px rgb(0 0 0 / 0.5)' : '0 25px 50px -12px rgb(0 0 0 / 0.15)', 
+        zIndex: 50, 
+        opacity: 0.95,
+        backgroundColor: isLeft ? 'rgba(31, 41, 55, 0.8)' : '#ffffff',
+        backdropFilter: isLeft ? 'blur(8px)' : 'blur(0px)',
+        cursor: 'grabbing'
+      }}
+      transition={{ 
+        layout: { type: "spring", stiffness: 40, damping: 12 },
+        default: { type: "spring", stiffness: 200, damping: 20 }
+      }}
+    >
+      {renderContent(type, dragControls)}
+    </Reorder.Item>
+  );
+};
+
 export default function ProfessionalLayout({
-  targetProfile, user, isOwn, activeTemplate,
+  targetProfile, user, isOwn, activeTemplate, activeAccent, activeHeaderColor,
   portfolioItems, itemsByType,
   addingType, setAddingType,
   editingItem, setEditingItem,
   editingProfile, setEditingProfile,
+  editingSkills, setEditingSkills,
+  editSkillsInput, setEditSkillsInput,
+  savingSkills, handleSaveSkills, handleDeleteSkill,
   editName, setEditName, editHeadline, setEditHeadline,
   editPhone, setEditPhone, editLocation, setEditLocation,
   savingProfile, handleSaveProfile,
   avatarInputRef, uploadingAvatar, handleAvatarUpload,
   handleSaveItem, handleDeleteItem,
-  initials, avatarColor, navigate
+  initials, avatarColor, navigate,
+  sectionOrder, setSectionOrder, handleSaveSectionOrder
 }) {
 
+  // Reorder logic
+  const handleReorder = (newSubOrder, sectionGroup) => {
+    const indices = sectionOrder.map((s, i) => sectionGroup.includes(s) ? i : -1).filter(i => i !== -1);
+    const updatedOrder = [...sectionOrder];
+    indices.forEach((index, i) => {
+      updatedOrder[index] = newSubOrder[i];
+    });
+    setSectionOrder(updatedOrder);
+    handleSaveSectionOrder(updatedOrder);
+  };
+
+  const orderedLeftSections = LEFT_SECTIONS.slice().sort((a, b) => {
+    const idxA = sectionOrder.indexOf(a);
+    const idxB = sectionOrder.indexOf(b);
+    return (idxA !== -1 ? idxA : 999) - (idxB !== -1 ? idxB : 999);
+  });
+
+  const orderedRightSections = RIGHT_SECTIONS.slice().sort((a, b) => {
+    const idxA = sectionOrder.indexOf(a);
+    const idxB = sectionOrder.indexOf(b);
+    return (idxA !== -1 ? idxA : 999) - (idxB !== -1 ? idxB : 999);
+  });
+
+
+
   /* ─── Render a right-side section (white bg) ─── */
-  const renderRightSection = (type) => {
+  const renderRightSection = (type, dragControls) => {
+    if (type === 'hobby') {
+      const hobbies = itemsByType('hobby');
+      const isAddingHobby = addingType === 'hobby';
+      if (!isOwn && hobbies.length === 0) return null;
+      return (
+        <div key="hobby" className="mb-6 resume-section">
+          <ResumeSectionHeader type="hobby" isOwn={isOwn} accentColor={activeAccent} dragControls={dragControls}
+            onAdd={() => { setAddingType('hobby'); setEditingItem(null); }} />
+
+          {hobbies.length > 0 && (
+            <div className="resume-grid-items">
+              {hobbies.map((item) => (
+                editingItem?.id === item.id ? (
+                  <InlineItemForm key={item.id} type="hobby" initialData={item}
+                    onSave={handleSaveItem} onCancel={() => setEditingItem(null)} />
+                ) : (
+                  <div key={item.id} className="group flex items-center justify-between py-0.5">
+                    <span className="text-xs text-gray-600">{item.title}</span>
+                    {isOwn && (
+                      <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity no-print">
+                        <button onClick={() => { setEditingItem(item); setAddingType(null); }} className="p-0.5 rounded hover:bg-gray-100">
+                          <Pencil className="w-2.5 h-2.5 text-gray-400" />
+                        </button>
+                        <button onClick={() => handleDeleteItem(item)} className="p-0.5 rounded hover:bg-red-50">
+                          <Trash2 className="w-2.5 h-2.5 text-red-400" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )
+              ))}
+            </div>
+          )}
+
+          {isOwn && hobbies.length === 0 && !isAddingHobby && (
+            <p className="text-xs italic text-gray-300 mb-2">No hobbies added yet.</p>
+          )}
+
+          {isAddingHobby && (
+            <InlineItemForm type="hobby" onSave={handleSaveItem} onCancel={() => setAddingType(null)} />
+          )}
+        </div>
+      );
+    }
+
     const items = itemsByType(type);
     const isAdding = addingType === type;
 
@@ -30,19 +148,36 @@ export default function ProfessionalLayout({
 
     return (
       <div key={type} className="mb-6 resume-section">
-        <ResumeSectionHeader type={type} isOwn={isOwn}
+        <ResumeSectionHeader type={type} isOwn={isOwn} accentColor={activeAccent} dragControls={dragControls}
           onAdd={() => { setAddingType(type); setEditingItem(null); }} />
 
-        {items.map((item) => (
-          editingItem?.id === item.id ? (
-            <InlineItemForm key={item.id} type={type} initialData={item}
-              onSave={handleSaveItem} onCancel={() => setEditingItem(null)} />
-          ) : (
-            <ResumeItem key={item.id} item={item} isOwn={isOwn}
-              onEdit={(it) => { setEditingItem(it); setAddingType(null); }}
-              onDelete={handleDeleteItem} />
-          )
-        ))}
+        {type === 'reference' ? (
+          <div className="flex flex-row flex-wrap gap-x-8 gap-y-2">
+            {items.map((item) => (
+              <div key={item.id} className="flex-none w-auto max-w-full">
+                {editingItem?.id === item.id ? (
+                  <InlineItemForm type={type} initialData={item}
+                    onSave={handleSaveItem} onCancel={() => setEditingItem(null)} />
+                ) : (
+                  <ResumeItem item={item} isOwn={isOwn}
+                    onEdit={(it) => { setEditingItem(it); setAddingType(null); }}
+                    onDelete={handleDeleteItem} />
+                )}
+              </div>
+            ))}
+          </div>
+        ) : (
+          items.map((item) => (
+            editingItem?.id === item.id ? (
+              <InlineItemForm key={item.id} type={type} initialData={item}
+                onSave={handleSaveItem} onCancel={() => setEditingItem(null)} />
+            ) : (
+              <ResumeItem key={item.id} item={item} isOwn={isOwn}
+                onEdit={(it) => { setEditingItem(it); setAddingType(null); }}
+                onDelete={handleDeleteItem} />
+            )
+          ))
+        )}
 
         {isOwn && items.length === 0 && !isAdding && (
           <p className="text-xs italic text-gray-300 mb-2">
@@ -58,7 +193,64 @@ export default function ProfessionalLayout({
   };
 
   /* ─── Render a left-side section (dark bg) ─── */
-  const renderLeftSection = (type) => {
+  const renderLeftSection = (type, dragControls) => {
+    if (type === 'skills') {
+      if (!isOwn && (targetProfile?.skills || []).length === 0) return null;
+      return (
+        <div key="skills" className="mb-5 resume-section group">
+          <div className="resume-section-header resume-section-header--dark flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              {isOwn && dragControls && (
+                <div onPointerDown={(e) => dragControls.start(e)} style={{ touchAction: 'none' }} className="cursor-grab active:cursor-grabbing p-1 -ml-1 rounded hover:bg-white/10 text-white/40 transition-colors no-print" title="Hold and drag to reorder">
+                  <svg className="w-4 h-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="12" r="1"/><circle cx="9" cy="5" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="19" r="1"/></svg>
+                </div>
+              )}
+              <h3 className="text-sm font-extrabold uppercase tracking-widest text-white">Skills</h3>
+            </div>
+            {isOwn && (
+              <button onClick={() => { setEditingSkills(true); setEditSkillsInput(''); }} className="p-1 rounded-full hover:bg-white/10 text-white/40 hover:text-white transition-colors opacity-0 group-hover:opacity-100 no-print">
+                <Plus className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+          {editingSkills ? (
+             <div className="space-y-2 mt-2 no-print">
+               <input className="w-full bg-white/10 border border-white/20 rounded-md px-3 py-1.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-brand/50"
+                 value={editSkillsInput} onChange={(e) => setEditSkillsInput(e.target.value)} placeholder="e.g. React, Node.js (comma separated)" autoFocus onKeyDown={(e) => { if(e.key === 'Enter') handleSaveSkills(); }} />
+               <div className="flex gap-2 pt-1">
+                 <button onClick={handleSaveSkills} disabled={savingSkills}
+                   className="flex items-center gap-1 px-3 py-1 rounded-md bg-brand text-white text-xs font-semibold hover:bg-brand-dark disabled:opacity-50">
+                   <Check className="w-3 h-3" /> Save
+                 </button>
+                 <button onClick={() => { setEditingSkills(false); setEditSkillsInput(''); }}
+                   className="flex items-center gap-1 px-3 py-1 rounded-md border border-white/20 text-xs text-white/60 hover:bg-white/10">
+                   <X className="w-3 h-3" /> Cancel
+                 </button>
+               </div>
+             </div>
+          ) : (
+            <>
+              <div className="resume-grid-items mt-2">
+                {(targetProfile?.skills || []).map((skill) => (
+                  <div key={skill} className="group/skill flex items-center justify-between py-0.5">
+                    <span className="text-xs text-white/80">{skill}</span>
+                    {isOwn && (
+                      <button onClick={() => handleDeleteSkill(skill)} className="p-0.5 rounded hover:bg-white/10 opacity-0 group-hover/skill:opacity-100 transition-opacity no-print">
+                        <Trash2 className="w-2.5 h-2.5 text-red-300" />
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+              {isOwn && (targetProfile?.skills || []).length === 0 && (
+                 <p className="text-xs italic text-white/25 mt-1">No skills added yet.</p>
+              )}
+            </>
+          )}
+        </div>
+      );
+    }
+
     const items = itemsByType(type);
     const isAdding = addingType === type;
 
@@ -66,7 +258,7 @@ export default function ProfessionalLayout({
 
     return (
       <div key={type} className="mb-5 resume-section">
-        <ResumeSectionHeader type={type} isOwn={isOwn} dark
+        <ResumeSectionHeader type={type} isOwn={isOwn} dark dragControls={dragControls}
           onAdd={() => { setAddingType(type); setEditingItem(null); }} />
 
         {items.map((item) => (
@@ -103,7 +295,10 @@ export default function ProfessionalLayout({
       {/* ════════════════════════════════
           LEFT SIDEBAR (Dark/Gradient)
          ════════════════════════════════ */}
-      <div className={`resume-sidebar bg-gradient-to-br ${activeTemplate.gradient} text-white p-6 md:p-8 flex flex-col`}>
+      <div 
+        className={`resume-sidebar text-white p-6 md:p-8 flex flex-col ${!activeHeaderColor ? `bg-gradient-to-br ${activeTemplate.gradient}` : ''}`}
+        style={activeHeaderColor ? { background: activeHeaderColor } : {}}
+      >
         {/* Avatar */}
         <div className="flex flex-col items-center mb-6">
           <div className="relative group mb-5">
@@ -111,12 +306,13 @@ export default function ProfessionalLayout({
               <img
                 src={targetProfile.avatar_url}
                 alt={targetProfile.full_name || 'Profile'}
-                className="w-32 h-32 rounded-full object-cover ring-4 ring-white/20 shadow-lg"
+                className="w-32 h-32 rounded-full object-cover shadow-lg"
+                style={{ boxShadow: `0 0 0 4px ${activeAccent || 'rgba(255,255,255,0.2)'}` }}
               />
             ) : (
               <div
-                className="w-32 h-32 rounded-full flex items-center justify-center text-4xl font-bold ring-4 ring-white/20 shadow-lg"
-                style={{ backgroundColor: avatarColor.bg, color: avatarColor.text }}
+                className="w-32 h-32 rounded-full flex items-center justify-center text-4xl font-bold shadow-lg"
+                style={{ backgroundColor: avatarColor.bg, color: avatarColor.text, boxShadow: `0 0 0 4px ${activeAccent || 'rgba(255,255,255,0.2)'}` }}
               >
                 {initials}
               </div>
@@ -223,95 +419,26 @@ export default function ProfessionalLayout({
         )}
 
         {/* ── Left-side sections: Languages, Certifications ── */}
-        {LEFT_SECTIONS.map((type) => renderLeftSection(type))}
+        <Reorder.Group axis="y" values={orderedLeftSections} onReorder={(newOrder) => handleReorder(newOrder, LEFT_SECTIONS)} className="flex flex-col m-0 p-0">
+          {orderedLeftSections.map((type) => (
+            <DraggableSection key={type} type={type} renderContent={renderLeftSection} isLeft />
+          ))}
+        </Reorder.Group>
 
-        {/* ── Skills (from profile) ── */}
-        {(targetProfile?.skills || []).length > 0 && (
-          <div className="mt-auto pt-4">
-            <div className="resume-section-header resume-section-header--dark">
-              <h3 className="text-sm font-extrabold uppercase tracking-widest text-white">Skills</h3>
-            </div>
-            <div className="resume-grid-items">
-              {targetProfile.skills.map((skill) => (
-                <span key={skill} className="text-xs text-white/80 py-0.5">{skill}</span>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
 
       {/* ════════════════════════════════
           RIGHT CONTENT (White)
          ════════════════════════════════ */}
       <div className="p-6 md:p-8">
-        {/* Employer read-only actions */}
-        {!isOwn && (
-          <div className="flex items-center gap-2 mb-6 no-print">
-            <button onClick={() => navigate('/globe')}
-              className="px-4 py-2 rounded-lg bg-brand text-white text-xs font-semibold hover:bg-brand-dark transition-colors">
-              Shortlist
-            </button>
-            <button onClick={() => navigate('/globe')}
-              className="px-4 py-2 rounded-lg border border-gray-200 text-xs font-medium text-gray-500 hover:bg-gray-50 transition-colors">
-              Not a fit
-            </button>
-            <button onClick={() => navigate('/messaging')}
-              className="px-4 py-2 rounded-lg border border-brand-200 text-xs font-semibold text-brand hover:bg-brand-50 transition-colors">
-              Message
-            </button>
-          </div>
-        )}
 
         {/* Right-side sections */}
-        {RIGHT_SECTIONS.map((type) => renderRightSection(type))}
+        <Reorder.Group axis="y" values={orderedRightSections} onReorder={(newOrder) => handleReorder(newOrder, RIGHT_SECTIONS)} className="m-0 p-0 flex flex-col">
+          {orderedRightSections.map((type) => (
+            <DraggableSection key={type} type={type} renderContent={renderRightSection} isLeft={false} />
+          ))}
+        </Reorder.Group>
 
-        {/* ── Hobbies as multi-column grid ── */}
-        {(() => {
-          const hobbies = itemsByType('hobby');
-          const isAddingHobby = addingType === 'hobby';
-
-          if (!isOwn && hobbies.length === 0) return null;
-
-          return (
-            <div className="mb-6 resume-section">
-              <ResumeSectionHeader type="hobby" isOwn={isOwn}
-                onAdd={() => { setAddingType('hobby'); setEditingItem(null); }} />
-
-              {hobbies.length > 0 && (
-                <div className="resume-grid-items">
-                  {hobbies.map((item) => (
-                    editingItem?.id === item.id ? (
-                      <InlineItemForm key={item.id} type="hobby" initialData={item}
-                        onSave={handleSaveItem} onCancel={() => setEditingItem(null)} />
-                    ) : (
-                      <div key={item.id} className="group flex items-center justify-between py-0.5">
-                        <span className="text-xs text-gray-600">{item.title}</span>
-                        {isOwn && (
-                          <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity no-print">
-                            <button onClick={() => { setEditingItem(item); setAddingType(null); }} className="p-0.5 rounded hover:bg-gray-100">
-                              <Pencil className="w-2.5 h-2.5 text-gray-400" />
-                            </button>
-                            <button onClick={() => handleDeleteItem(item)} className="p-0.5 rounded hover:bg-red-50">
-                              <Trash2 className="w-2.5 h-2.5 text-red-400" />
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    )
-                  ))}
-                </div>
-              )}
-
-              {isOwn && hobbies.length === 0 && !isAddingHobby && (
-                <p className="text-xs italic text-gray-300 mb-2">No hobbies added yet.</p>
-              )}
-
-              {isAddingHobby && (
-                <InlineItemForm type="hobby" onSave={handleSaveItem} onCancel={() => setAddingType(null)} />
-              )}
-            </div>
-          );
-        })()}
       </div>
     </motion.div>
   );

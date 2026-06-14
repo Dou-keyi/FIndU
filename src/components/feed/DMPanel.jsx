@@ -1,23 +1,56 @@
 // DMPanel.jsx — slide-over messaging interface
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Send, Image as ImageIcon, MessageCircle } from 'lucide-react';
+import { X, Send, Image as ImageIcon, MessageCircle, Search, User } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
 import { useFeedStore } from '../../store/feedStore';
 import { getInitials, getAvatarColor } from '../../lib/avatarUtils';
+import { createMessageRequest } from '../../lib/messagingData';
+import { toast } from '../ui/use-toast';
 
 export default function DMPanel() {
   const { user } = useAuth();
   const isOpen = useFeedStore((s) => s.dmPanelOpen);
   const closeDMPanel = useFeedStore((s) => s.closeDMPanel);
-  const targetUser = useFeedStore((s) => s.dmTargetUser);
-  const sharedPost = useFeedStore((s) => s.dmSharedPost);
+  const storeRecipient = useFeedStore((s) => s.dmRecipient);
+  const sharedPost = useFeedStore((s) => s.dmAttachedPost);
+
+  const [localRecipient, setLocalRecipient] = useState(null);
+  const targetUser = storeRecipient || localRecipient;
 
   const [message, setMessage] = useState('');
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(false);
   const messagesEndRef = useRef(null);
+
+  // Search state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [isSearching, setIsSearching] = useState(false);
+
+  // Debounced search
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setSearchResults([]);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setIsSearching(true);
+      const { data } = await supabase
+        .from('profiles')
+        .select('id, full_name, headline, avatar_url, role')
+        .ilike('full_name', `%${searchQuery.trim()}%`)
+        .neq('id', user?.id)
+        .limit(10);
+      
+      setSearchResults(data || []);
+      setIsSearching(false);
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery, user?.id]);
 
   // If we had a real chat system we'd load conversation history here.
   // For this mockup, we'll just handle optimistic sends to the UI.
@@ -25,34 +58,41 @@ export default function DMPanel() {
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden';
-      // Pre-fill if sharing a post
-      if (sharedPost) {
-        setMessage(`Check out this post: ${window.location.origin}/feed?post=${sharedPost.id}`);
-      }
+      // No pre-fill message needed
     } else {
       document.body.style.overflow = '';
       setMessage('');
       setMessages([]);
+      setLocalRecipient(null);
+      setSearchQuery('');
+      setSearchResults([]);
     }
     return () => { document.body.style.overflow = ''; };
   }, [isOpen, sharedPost]);
 
-  const handleSend = () => {
-    if (!message.trim()) return;
+  const handleSend = async () => {
+    if (!message.trim() || !targetUser) return;
+    setLoading(true);
 
-    setMessages(prev => [...prev, {
-      id: Date.now(),
-      sender_id: user?.id,
-      body: message.trim(),
-      created_at: new Date().toISOString()
-    }]);
-    setMessage('');
-    
-    setTimeout(() => {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, 100);
+    const { error } = await createMessageRequest(user.id, targetUser.id, message.trim());
+    setLoading(false);
 
-    // In a real app, send to Supabase `messages` table
+    if (error) {
+      toast({
+        title: 'Failed to send message',
+        description: error.message,
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    toast({
+      title: 'Message sent',
+      description: `Your message request has been sent to ${targetUser.full_name}.`,
+      variant: 'success',
+    });
+
+    closeDMPanel();
   };
 
   const targetName = targetUser?.full_name || 'Message';
@@ -108,9 +148,71 @@ export default function DMPanel() {
             </div>
 
             {/* Message Area */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50">
-              {messages.length === 0 ? (
-                <div className="h-full flex flex-col items-center justify-center text-center opacity-50">
+            <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50 flex flex-col">
+              {!targetUser ? (
+                <div className="flex-1 flex flex-col">
+                  <div className="relative mb-4">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <input
+                      type="text"
+                      placeholder="Search for someone to message..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="w-full pl-9 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-300 focus:border-violet-300 transition-all shadow-sm"
+                      autoFocus
+                    />
+                  </div>
+
+                  {isSearching ? (
+                    <div className="flex justify-center py-10">
+                      <div className="w-5 h-5 border-2 border-gray-200 border-t-violet-600 rounded-full animate-spin" />
+                    </div>
+                  ) : searchResults.length > 0 ? (
+                    <div className="space-y-1">
+                      {searchResults.map((result) => {
+                        const colors = getAvatarColor(result.full_name);
+                        return (
+                          <button
+                            key={result.id}
+                            onClick={() => setLocalRecipient(result)}
+                            className="w-full flex items-center gap-3 p-3 bg-white hover:bg-violet-50 rounded-xl border border-transparent hover:border-violet-100 transition-all text-left"
+                          >
+                            <div
+                              className="w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center text-sm font-semibold"
+                              style={{ backgroundColor: colors.bg, color: colors.text }}
+                            >
+                              {result.avatar_url ? (
+                                <img src={result.avatar_url} alt="" className="w-full h-full rounded-full object-cover" />
+                              ) : (
+                                getInitials(result.full_name)
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-bold text-gray-900 truncate">{result.full_name}</p>
+                              <p className="text-xs text-gray-500 truncate">{result.headline || result.role}</p>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ) : searchQuery.trim() ? (
+                    <div className="text-center py-10 text-gray-400 text-sm">
+                      No users found matching "{searchQuery}"
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center text-center py-16 opacity-50">
+                      <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mb-4">
+                        <User className="w-8 h-8 text-gray-400" />
+                      </div>
+                      <p className="text-sm font-medium text-gray-600">Share with someone</p>
+                      <p className="text-xs text-gray-400 mt-1 max-w-[200px]">
+                        Search for a name to send them this post via DM.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              ) : messages.length === 0 ? (
+                <div className="h-full flex flex-col items-center justify-center text-center opacity-50 flex-1">
                   <MessageCircle className="w-12 h-12 text-gray-400 mb-2" />
                   <p className="text-sm text-gray-500">No messages yet.</p>
                   <p className="text-xs text-gray-400">Say hello!</p>
@@ -156,10 +258,14 @@ export default function DMPanel() {
                   </button>
                   <button
                     onClick={handleSend}
-                    disabled={!message.trim()}
-                    className="p-2 rounded-xl bg-violet-600 text-white hover:bg-violet-700 disabled:opacity-50 transition-colors"
+                    disabled={!message.trim() || loading}
+                    className="p-2 rounded-xl bg-violet-600 text-white hover:bg-violet-700 disabled:opacity-50 transition-colors flex items-center justify-center"
                   >
-                    <Send className="w-4 h-4" />
+                    {loading ? (
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    ) : (
+                      <Send className="w-4 h-4" />
+                    )}
                   </button>
                 </div>
               </div>
