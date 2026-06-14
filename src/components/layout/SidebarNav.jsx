@@ -1,11 +1,12 @@
 // SidebarNav.jsx — Desktop navigation sidebar (md:flex)
 import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Globe2, Newspaper, FileText, MessageSquare, Clock, LogOut, PlusCircle, Building2 } from 'lucide-react';
+import { Globe2, Newspaper, FileText, MessageSquare, Clock, LogOut, PlusCircle, Building2, Users } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { supabase } from '../../lib/supabase';
 import { getInitials, getAvatarColor } from '../../lib/avatarUtils';
 import LogoutConfirmModal from './LogoutConfirmModal';
+import NotificationsBell from '../NotificationsBell';
 
 const getNavItems = (role) => [
   { path: '/globe', icon: Globe2, label: 'Jobs' },
@@ -44,6 +45,7 @@ export default function SidebarNav() {
           <span className="text-sm font-bold text-brand">C</span>
         </div>
         <span className="font-bold text-lg text-gray-900 tracking-tight">Career OS</span>
+        <div className="ml-auto"><NotificationsBell /></div>
       </div>
 
       {/* Navigation Links */}
@@ -115,11 +117,24 @@ export default function SidebarNav() {
             {initials}
           </div>
           <div className="flex-1 min-w-0 text-left">
-            <p className="text-sm font-semibold text-gray-900 truncate">{name}</p>
-            <p className="text-xs text-gray-500 truncate capitalize">{profile?.role || 'User'}</p>
+            <p className="text-sm font-semibold text-gray-900 truncate">
+              {name}
+              <span className="ml-1 text-[10px] font-medium text-gray-400 capitalize">· {profile?.role || 'User'}</span>
+            </p>
           </div>
         </button>
 
+        {profile?.role === 'employer' && (
+          <button
+            onClick={() => navigate('/team')}
+            className={`w-full mt-2 flex items-center gap-3 px-4 py-2.5 rounded-xl transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand font-medium text-sm ${
+              location.pathname === '/team' ? 'bg-brand/5 text-brand' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'
+            }`}
+          >
+            <Users className="w-4 h-4" aria-hidden="true" />
+            <span>My Team</span>
+          </button>
+        )}
         <button
           onClick={handleLogoutClick}
           className="w-full mt-2 flex items-center gap-3 px-4 py-2.5 rounded-xl text-gray-500 hover:bg-red-50 hover:text-red-600 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 font-medium text-sm"
