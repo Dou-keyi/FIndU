@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Loader2, X } from 'lucide-react';
 
-const ITEM_TYPES = ['project', 'achievement', 'experience', 'certification'];
+const ITEM_TYPES = ['project', 'achievement', 'experience', 'certification', 'reference'];
 
 export default function PortfolioItemForm({ initialData, onSave, onCancel }) {
   const [itemType, setItemType] = useState(initialData?.item_type || 'project');
