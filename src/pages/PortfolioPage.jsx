@@ -331,6 +331,9 @@ export default function PortfolioPage() {
 
       // Save scanned template if detected
       if (parsedData.scannedTemplate) {
+        // Delete previous scanned templates for this user to avoid duplicates
+        await supabase.from('resume_templates').delete().eq('candidate_id', user.id);
+
         const t = parsedData.scannedTemplate;
         const { error: tmplError } = await supabase
           .from('resume_templates')
@@ -348,16 +351,19 @@ export default function PortfolioPage() {
         if (!tmplError) {
           // Set this template as active and add it to local state
           profileUpdates.resume_template = t.id;
-          setTemplates(prev => [...prev, {
-            id: t.id,
-            name: t.name || 'Scanned Template',
-            description: t.description || 'Custom template from upload',
-            gradient: t.gradient || 'from-gray-800 to-gray-600',
-            accent: t.accent || '#4b5563',
-            custom_css: t.custom_css || null,
-            icon: t.icon || 'Layout',
-            candidate_id: user.id
-          }]);
+          setTemplates(prev => [
+            ...prev.filter(tmpl => tmpl.candidate_id !== user.id),
+            {
+              id: t.id,
+              name: t.name || 'Scanned Template',
+              description: t.description || 'Custom template from upload',
+              gradient: t.gradient || 'from-gray-800 to-gray-600',
+              accent: t.accent || '#4b5563',
+              custom_css: t.custom_css || null,
+              icon: t.icon || 'Layout',
+              candidate_id: user.id
+            }
+          ]);
         } else {
           console.warn('Failed to save scanned template:', tmplError);
         }
@@ -448,6 +454,12 @@ export default function PortfolioPage() {
         .eq('candidate_id', user.id);
       if (itemsErr) throw itemsErr;
 
+      // Delete custom scanned templates
+      await supabase
+        .from('resume_templates')
+        .delete()
+        .eq('candidate_id', user.id);
+
       // Reset profile fields
       const resetFields = {
         full_name: null,
@@ -456,6 +468,9 @@ export default function PortfolioPage() {
         location: null,
         skills: [],
         avatar_url: null,
+        resume_template: null,
+        resume_accent_color: null,
+        resume_header_color: null,
       };
       const { error: profErr } = await supabase
         .from('profiles')
@@ -465,7 +480,11 @@ export default function PortfolioPage() {
 
       // Update local state
       setPortfolioItems([]);
+      setTemplates(prev => prev.filter(tmpl => tmpl.candidate_id !== user.id));
       setTargetProfile((p) => ({ ...p, ...resetFields }));
+      setCustomHex('');
+      setCustomHeaderColor1('');
+      setCustomHeaderColor2('');
       setEditName('');
       setEditHeadline('');
       setEditPhone('');
