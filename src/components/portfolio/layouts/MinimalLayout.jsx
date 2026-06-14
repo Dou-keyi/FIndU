@@ -1,7 +1,8 @@
 // MinimalLayout.jsx — Clean typographic single-column resume with thin rules and max whitespace
 import React from 'react';
 import {
-  Loader2, Pencil, Trash2, Check, X, Camera, Plus, Sparkles
+  Loader2, Pencil, Trash2, Check, X, Camera, Plus, Sparkles,
+  Briefcase, Phone, Mail
 } from 'lucide-react';
 import { motion, Reorder, useDragControls, AnimatePresence } from 'framer-motion';
 import { SECTION_META, InlineItemForm, ALL_SECTIONS } from './SharedComponents';
@@ -260,10 +261,20 @@ export default function MinimalLayout({
                           )}
                         </div>
                         {item.description && (
-                          <div className="mt-1.5 text-xs text-gray-500 leading-relaxed">
-                            {item.description.split('\n').filter(Boolean).map((line, i) => (
-                              <p key={i} className="mb-1">{line}</p>
-                            ))}
+                          <div className="mt-1.5 text-xs text-gray-500 leading-relaxed space-y-1">
+                            {item.description.split('\n').filter(Boolean).map((line, i) => {
+                              let icon = null;
+                              if (line.startsWith('Position:')) icon = <Briefcase className="w-3.5 h-3.5 text-gray-400 shrink-0" />;
+                              else if (line.startsWith('Phone:')) icon = <Phone className="w-3.5 h-3.5 text-gray-400 shrink-0" />;
+                              else if (line.startsWith('Email:')) icon = <Mail className="w-3.5 h-3.5 text-gray-400 shrink-0" />;
+                              
+                              const text = line.replace(/^(Position|Phone|Email):\s*/, '');
+                              return (
+                                <p key={i} className="flex items-center gap-1.5 mb-1">
+                                  {icon} <span>{text}</span>
+                                </p>
+                              );
+                            })}
                           </div>
                         )}
                       </div>

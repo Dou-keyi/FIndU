@@ -62,12 +62,14 @@ IMPORTANT RULES:
    - Courses, training programs → "certification"  
    - Research, publications → "project"
    - Interests, activities → "hobby"
-   - References, personal statement → "summary"
+   - Personal statement → "summary"
+   - References → "reference"
 3. For the "summary" section, combine any objective/summary/about me text into ONE item.
 4. For "language" items, put the proficiency level (e.g. "Fluent", "Native", "Intermediate") in the description.
 5. For "hobby" items, just set title — no description needed.
 6. Extract skills as a flat array of skill names.
 7. Extract profile info (name, headline/job title, phone, email, location/address) if present.
+8. For "reference" items, the description MUST be formatted with these exact prefixes on separate lines: "Position: [position]", "Phone: [phone]", "Email: [email]". If any is missing, omit that line.
 
 Respond ONLY with valid JSON in this exact shape — no markdown, no preamble:
 {
@@ -87,7 +89,8 @@ Respond ONLY with valid JSON in this exact shape — no markdown, no preamble:
     "achievement": [{ "title": "...", "description": "...", "tags": [] }],
     "certification": [{ "title": "...", "description": "...", "tags": [] }],
     "language": [{ "title": "...", "description": "...", "tags": [] }],
-    "hobby": [{ "title": "...", "description": null, "tags": [] }]
+    "hobby": [{ "title": "...", "description": null, "tags": [] }],
+    "reference": [{ "title": "...", "description": "...", "tags": [] }]
   }
 }`;
 
