@@ -229,9 +229,14 @@
    ═══════════════════════════════════════════════ */
 
 /* Screen: resume page wrapper */
-.resume-page {
+.resume-page,
+div.resume-page[class*="resume-page"] {
   max-width: 900px;
   margin: 0 auto;
+  background: transparent !important;
+  padding: 0 !important;
+  border: none !important;
+  box-shadow: none !important;
 }
 
 /* Resume section header accent */

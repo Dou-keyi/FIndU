@@ -607,7 +607,7 @@ export default function PortfolioPage() {
       {/* ══ Resume Document — Layout Selector ══ */}
       <main className="flex-1 px-4 py-6 md:py-8 transition-all duration-300 flex justify-center">
         <div className="flex flex-col xl:flex-row items-center xl:items-start gap-6 w-full max-w-[1250px] justify-center relative">
-          <div className="resume-page w-full min-w-0">
+          <motion.div layout className="resume-page w-full min-w-0">
             {(() => {
               // Scanned/custom templates always use Professional layout
               // System templates use their specific layout
