@@ -26,11 +26,13 @@ export default function PostHeader({
   const [followLoading, setFollowLoading] = useState(false);
 
   const isCompanyPost = post.post_type === 'company';
-  const author = Array.isArray(post.author) ? post.author[0] : post.author;
-  const company = Array.isArray(post.company) ? post.company[0] : post.company;
+  const author = post.author;
+  const company = post.company;
 
   const displayName = isCompanyPost ? company?.name : author?.full_name;
-  const displaySubtext = isCompanyPost ? 'Company' : author?.headline;
+  const displaySubtext = isCompanyPost ? author?.full_name : author?.headline; // Company posts show the poster's name here
+  const displayAvatar = isCompanyPost ? company?.logo_url : author?.avatar_url;
+
   const avatarInitials = getInitials(displayName);
   const avatarColor = getAvatarColor(displayName);
 
@@ -70,11 +72,11 @@ export default function PostHeader({
         className="relative flex-shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 rounded-full"
         aria-label={`View ${displayName}'s profile`}
       >
-        {author?.avatar_url ? (
+        {displayAvatar ? (
           <img
-            src={author.avatar_url}
-            alt={displayName || 'User avatar'}
-            className="w-10 h-10 rounded-full object-cover"
+            src={displayAvatar}
+            alt={displayName || 'Avatar'}
+            className="w-10 h-10 rounded-full object-cover shadow-sm ring-1 ring-black/5"
             loading="lazy"
           />
         ) : (
@@ -101,13 +103,13 @@ export default function PostHeader({
           </button>
 
           {isCompanyPost && (
-            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wider bg-blue-50 text-blue-700 border border-blue-100">
-              <Building2 className="w-2.5 h-2.5" />
-              Co.
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-widest bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-sm shadow-blue-500/20">
+              <Building2 className="w-3 h-3" />
+              Company Update
             </span>
           )}
 
-          {intentData && (
+          {intentData && !isCompanyPost && (
             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-violet-50 text-violet-700 border border-violet-100">
               {intentData.emoji} {intentData.label}
             </span>
@@ -139,15 +141,23 @@ export default function PostHeader({
           )}
         </div>
 
-        <div className="flex items-center gap-1.5 mt-0.5">
-          <p className="text-xs text-gray-500 truncate">{displaySubtext}</p>
-          <span className="text-gray-300">·</span>
-          <time
-            className="text-xs text-gray-400 flex-shrink-0 cursor-default"
-            title={post.created_at ? new Date(post.created_at).toLocaleString() : ''}
-          >
-            {formatRelativeTime(post.created_at)}
-          </time>
+        <div className="flex items-center gap-1.5 text-[11px] text-gray-500 mt-0.5 flex-wrap">
+          {isCompanyPost ? (
+            <span className="font-medium text-gray-600 flex items-center gap-1">
+              <span className="text-gray-400">Posted by</span>
+              <button 
+                onClick={(e) => { e.stopPropagation(); navigate(`/portfolio/${author?.id}`); }}
+                className="text-gray-700 hover:text-violet-600 transition-colors hover:underline"
+              >
+                {displaySubtext || 'Unknown'}
+              </button>
+            </span>
+          ) : (
+            <span className="truncate max-w-[200px]">{displaySubtext || 'FIndU Member'}</span>
+          )}
+          
+          <span className="text-gray-300">•</span>
+          <span>{formatRelativeTime(post.created_at)}</span>
           {post.location && (
             <>
               <span className="text-gray-300">·</span>

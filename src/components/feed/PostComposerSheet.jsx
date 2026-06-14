@@ -18,17 +18,11 @@ export default function PostComposerSheet({ isOpen, onClose, onPostCreated }) {
   const [hashtags, setHashtags] = useState([]);
   const [tagInput, setTagInput] = useState('');
   const [posting, setPosting] = useState(false);
+  const [postAsCompany, setPostAsCompany] = useState(profile?.role === 'employer');
 
   const role = profile?.role || 'candidate';
   const charCount = content.length;
-  // If quoting, we can post even without content
-  const canPost = (content.trim().length > 0 || window.__quotedPost) && !posting;
-
-  // Clear quoted post when closing
-  const handleClose = () => {
-    window.__quotedPost = null;
-    onClose();
-  };
+  const canPost = content.trim().length > 0 && !posting;
 
   const addTag = useCallback(() => {
     const clean = tagInput.replace(/^#/, '').trim().toLowerCase();
@@ -59,7 +53,9 @@ export default function PostComposerSheet({ isOpen, onClose, onPostCreated }) {
     try {
       // Determine company_id for employer posts
       let companyId = null;
-      if (role === 'employer') {
+      const finalPostType = (role === 'employer' && postAsCompany) ? 'company' : 'candidate';
+
+      if (finalPostType === 'company') {
         const { data: companies } = await supabase
           .from('companies')
           .select('id')
@@ -72,16 +68,11 @@ export default function PostComposerSheet({ isOpen, onClose, onPostCreated }) {
         user.id,
         content.trim(),
         hashtags,
-        role === 'employer' ? 'company' : 'candidate',
-        companyId,
-        null, // jobId
-        window.__quotedPost?.id || null // quotedPostId
+        finalPostType,
+        companyId
       );
 
       if (newPost) {
-        if (window.__quotedPost) {
-          newPost.quoted_post = window.__quotedPost;
-        }
         onPostCreated?.(newPost);
 
         // Candidate only: trigger AI portfolio suggestion
@@ -103,7 +94,7 @@ export default function PostComposerSheet({ isOpen, onClose, onPostCreated }) {
         setContent('');
         setHashtags([]);
         setTagInput('');
-        handleClose();
+        onClose();
       }
     } catch (err) {
       console.error('Failed to submit post:', err);
@@ -122,7 +113,7 @@ export default function PostComposerSheet({ isOpen, onClose, onPostCreated }) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            onClick={handleClose}
+            onClick={onClose}
           />
 
           {/* Sheet */}
@@ -142,7 +133,7 @@ export default function PostComposerSheet({ isOpen, onClose, onPostCreated }) {
             <div className="flex items-center justify-between px-5 pb-3">
               <h3 className="text-base font-semibold text-gray-900">New Post</h3>
               <button
-                onClick={handleClose}
+                onClick={onClose}
                 className="p-1.5 rounded-full hover:bg-gray-100 transition-colors"
                 aria-label="Close"
               >
@@ -151,10 +142,31 @@ export default function PostComposerSheet({ isOpen, onClose, onPostCreated }) {
             </div>
 
             <div className="px-5 pb-6">
+              {/* Role Toggle for Employers */}
+              {role === 'employer' && (
+                <div className="flex items-center gap-3 mb-4 p-3 bg-gray-50 rounded-xl border border-gray-100">
+                  <span className="text-sm font-medium text-gray-700">Post as:</span>
+                  <div className="flex bg-gray-200/50 p-1 rounded-lg">
+                    <button 
+                      onClick={() => setPostAsCompany(true)}
+                      className={`px-3 py-1 rounded-md text-xs font-semibold transition-all ${postAsCompany ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                    >
+                      Company
+                    </button>
+                    <button 
+                      onClick={() => setPostAsCompany(false)}
+                      className={`px-3 py-1 rounded-md text-xs font-semibold transition-all ${!postAsCompany ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                    >
+                      Individual
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {/* Textarea */}
               <textarea
                 className="w-full min-h-[120px] resize-none rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand transition-all"
-                placeholder={window.__quotedPost ? "Add a comment..." : "What's on your mind?"}
+                placeholder="What's on your mind?"
                 value={content}
                 onChange={(e) => {
                   if (e.target.value.length <= MAX_CHARS) {
@@ -163,17 +175,6 @@ export default function PostComposerSheet({ isOpen, onClose, onPostCreated }) {
                 }}
                 rows={3}
               />
-
-              {window.__quotedPost && (
-                <div className="mt-3 mb-2 p-3 border border-gray-200 rounded-xl bg-gray-50 flex flex-col gap-1">
-                  <p className="text-xs font-semibold text-gray-700">
-                    Replying to {window.__quotedPost.author?.full_name}
-                  </p>
-                  <p className="text-xs text-gray-500 line-clamp-2">
-                    {window.__quotedPost.content || 'Attached post'}
-                  </p>
-                </div>
-              )}
 
               {/* Char count */}
               <div className="flex justify-end mt-1 mb-3">
