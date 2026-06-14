@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Career OS — final landing demo</title>
+<style>
+  :root{ --cyan:#46c8ff; }
+  *{ box-sizing:border-box; margin:0; padding:0; }
+  html,body{ height:100%; } body{ font-family:'Segoe UI',system-ui,sans-serif; background:#05070f; color:#fff; overflow:hidden; }
+  .aurora{ position:fixed; inset:-25%; z-index:0; filter:blur(90px); }
+  .aurora span{ position:absolute; border-radius:50%; mix-blend-mode:screen; }
+  .a1{ width:48vw;height:48vw;left:6%;top:8%;background:radial-gradient(circle,#1b4eff,transparent 70%); }
+  .a2{ width:42vw;height:42vw;right:4%;top:20%;background:radial-gradient(circle,#00e0ff,transparent 70%); }
+  .a3{ width:40vw;height:40vw;left:28%;bottom:-8%;background:radial-gradient(circle,#7c3aed,transparent 70%); }
+  #bg{ position:fixed; inset:0; z-index:1; }
+  .ico{ position:fixed; left:0; top:0; z-index:2; color:var(--cyan); pointer-events:none; will-change:transform,filter; }
+  .ico svg{ width:100%; height:100%; display:block; }
+
+  .scene{ position:relative; z-index:3; height:100%; display:grid; grid-template-columns:1.1fr .9fr; align-items:center; gap:3vw; padding:0 6vw; perspective:1200px; }
+  @media(max-width:880px){ .scene{ grid-template-columns:1fr; } .right{ display:none; } }
+  .badge,.h,.sub,.card{ opacity:0; animation:rise .9s cubic-bezier(.2,.8,.2,1) forwards; }
+  .badge{ animation-delay:.05s } .h{ animation-delay:.18s } .sub{ animation-delay:.32s } .card{ animation-delay:.42s }
+  @keyframes rise{ from{ opacity:0; transform:translateY(22px) } to{ opacity:1; transform:none } }
+  .badge{ display:inline-flex; align-items:center; gap:8px; padding:8px 16px; border-radius:999px; font-size:14px; font-weight:600;
+    background:rgba(40,80,160,.25); border:1px solid rgba(90,150,255,.35); backdrop-filter:blur(6px); margin-bottom:26px; }
+  h1{ font-size:clamp(32px,4.6vw,64px); line-height:1.04; font-weight:800; letter-spacing:-.02em; }
+  .shimmer{ background:linear-gradient(100deg,#8fdcff 10%,#fff 30%,#46c8ff 50%,#7c3aed 70%,#8fdcff 90%); background-size:250% 100%;
+    -webkit-background-clip:text; background-clip:text; color:transparent; animation:sweep 5s linear infinite; }
+  @keyframes sweep{ to{ background-position:-50% 0; } }
+  .sub{ margin-top:24px; max-width:430px; color:#aab6d6; font-size:17px; line-height:1.6; }
+
+  .card-wrap{ display:grid; place-items:center; transform-style:preserve-3d; }
+  .card{ position:relative; width:min(420px,90%); padding:38px 34px; border-radius:22px; background:rgba(16,24,46,.55); backdrop-filter:blur(18px);
+    border:1px solid rgba(120,160,255,.18); box-shadow:0 30px 80px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.08); transition:transform .15s ease-out; }
+  .card::before{ content:""; position:absolute; inset:-1px; border-radius:22px; padding:1px; pointer-events:none;
+    background:conic-gradient(from var(--ang,0deg),transparent 20%,#46c8ff,#7c3aed,transparent 60%);
+    -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0); -webkit-mask-composite:xor; mask-composite:exclude; animation:spin 6s linear infinite; opacity:.85; }
+  @property --ang{ syntax:'<angle>'; inherits:false; initial-value:0deg; } @keyframes spin{ to{ --ang:360deg; } }
+  .card h2{ font-size:26px; text-align:center; } .card p.k{ text-align:center; color:#9fb0d6; font-size:14px; margin:6px 0 26px; }
+  label{ display:block; font-size:13px; color:#c7d2ee; margin:16px 0 7px; font-weight:600; }
+  input{ width:100%; padding:13px 15px; border-radius:12px; border:1px solid rgba(140,170,255,.2); background:rgba(255,255,255,.06); color:#fff; font-size:15px; outline:none; transition:.2s; }
+  input:focus{ border-color:var(--cyan); box-shadow:0 0 0 4px rgba(70,200,255,.18); } input::placeholder{ color:#6b7aa0; }
+  .btn{ position:relative; overflow:hidden; width:100%; margin-top:26px; padding:15px; border:none; border-radius:13px; cursor:pointer; font-size:16px; font-weight:700; color:#fff;
+    background:linear-gradient(120deg,#2563eb,#3b82f6,#46c8ff); box-shadow:0 10px 30px rgba(59,130,246,.5); transition:transform .15s, box-shadow .25s; }
+  .btn:hover{ transform:translateY(-2px); box-shadow:0 16px 44px rgba(70,200,255,.6); }
+  .btn::after{ content:""; position:absolute; top:0; left:-60%; width:50%; height:100%; background:linear-gradient(120deg,transparent,rgba(255,255,255,.55),transparent); transform:skewX(-20deg); animation:sheen 3.2s ease-in-out infinite; }
+  @keyframes sheen{ 0%{ left:-60% } 55%,100%{ left:140% } }
+  @media(prefers-reduced-motion:reduce){ *{ animation:none !important; } }
+</style>
+</head>
+<body>
+  <div class="aurora"><span class="a1"></span><span class="a2"></span><span class="a3"></span></div>
+  <canvas id="bg"></canvas>
+  <div id="icoLayer"></div>
+  <div class="scene">
+    <div class="left">
+      <span class="badge">✨ Discover your potential</span>
+      <h1 class="h">No matter where you are from, you can always find a <span class="shimmer">career and network</span> anywhere.</h1>
+      <p class="sub">Join Career OS, the universe of boundless opportunities. Build your portfolio, explore global roles, and connect beyond borders.</p>
+    </div>
+    <div class="right card-wrap">
+      <div class="card" id="card">
+        <h2>Welcome back</h2><p class="k">Log in to your Career OS account</p>
+        <label>Email</label><input placeholder="user@example.com" />
+        <label>Password</label><input type="password" placeholder="••••••••" />
+        <button class="btn">Log in →</button>
+      </div>
+    </div>
+  </div>
+<script>
+const cv=document.getElementById('bg'), g=cv.getContext('2d');
+let W,H,CX,CY; const reduce=matchMedia('(prefers-reduced-motion:reduce)').matches;
+const mouse={x:0,y:0,tx:0,ty:0};
+let warp=[], web=[], blink=[];
+function resize(){ W=cv.width=innerWidth; H=cv.height=innerHeight; CX=W/2; CY=H/2;
+  warp=Array.from({length:260},()=>({x:(Math.random()-.5)*W,y:(Math.random()-.5)*H,z:Math.random()+.05}));
+  web=Array.from({length:30},()=>({x:Math.random()*W,y:Math.random()*H,vx:(Math.random()-.5)*.18,vy:(Math.random()-.5)*.18,t:Math.random()*6.3}));
+  blink=Array.from({length:90},()=>({x:Math.random()*W,y:Math.random()*H,r:Math.random()*1.3+0.3,ph:Math.random()*6.3,sp:1+Math.random()*2.5}));
+}
+resize(); addEventListener('resize',resize);
+
+// outline career icons (stroke = currentColor, no box)
+const P=[
+ '<rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M3 13h18"/>',           // briefcase
+ '<path d="M2 8l10-5 10 5-10 5z"/><path d="M6 10v5c0 1 3 3 6 3s6-2 6-3v-5"/>',                                                       // grad cap
+ '<rect x="3" y="7" width="18" height="13" rx="2"/><circle cx="12" cy="13" r="3.2"/><path d="M8 7l1.5-2h5L16 7"/>',                  // camera
+ '<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/>',                                                     // monitor
+ '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/>',                                       // globe
+ '<path d="M12 3c4 2 6 6 6 9l-4 4-5-5 3-8z"/><path d="M5 15c-1 1-2 4-2 4s3-1 4-2"/><circle cx="14" cy="9" r="1.3"/>',               // rocket
+ '<polyline points="9 8 5 12 9 16"/><polyline points="15 8 19 12 15 16"/>',                                                          // code
+ '<path d="M4 20V11M10 20V5M16 20v-7M3 20h18"/>',                                                                                    // chart
+ '<path d="M21 12a8 8 0 0 1-8 8H6l-3 2V12a8 8 0 0 1 8-8h2a8 8 0 0 1 8 8z"/>',                                                        // message
+ '<path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-4 10c1 1 1 2 1 3h6c0-1 0-2 1-3a6 6 0 0 0-4-10z"/>',                            // bulb
+ '<path d="M12 3v18M6 7h12M6 7l-3 6h6zM18 7l-3 6h6zM8 20h8"/>',                                                                      // scale
+ '<path d="M12 3l2.4 6 6.6.5-5 4 1.6 6.5L12 17l-5.6 3 1.6-6.5-5-4 6.6-.5z"/>'                                                        // star
+];
+const wrap=i=>`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${i}</svg>`;
+const layer=document.getElementById('icoLayer');
+const N=25, icons=[];
+const COLS=5, ROWS=Math.ceil(N/COLS);
+for(let i=0;i<N;i++){ const el=document.createElement('div'); el.className='ico'; el.innerHTML=wrap(P[i%P.length]);
+  const sz=26+Math.random()*20; el.style.width=el.style.height=sz+'px'; layer.appendChild(el);
+  const col=i%COLS, row=(i/COLS)|0;
+  const bx=Math.min(0.96,Math.max(0.04,(col+0.5+(Math.random()-0.5)*0.7)/COLS));
+  const by=Math.min(0.95,Math.max(0.05,(row+0.5+(Math.random()-0.5)*0.7)/ROWS));
+  icons.push({ bx, by, ph:Math.random()*6.3, sp:0.4+Math.random()*0.5, el, x:0,y:0 });
+}
+const pulses=Array.from({length:14},()=>({a:0,b:1,p:Math.random(),sp:0.006+Math.random()*0.006}));
+const near=(i,j)=>{ const dx=icons[i].x-icons[j].x, dy=icons[i].y-icons[j].y; return Math.hypot(dx,dy)<300; };
+function reassign(pl){ const a=(Math.random()*N)|0; let b=(Math.random()*N)|0; if(b===a)b=(b+1)%N; pl.a=a; pl.b=b; pl.p=0; }
+
+let t=0;
+function frame(){
+  t+=reduce?0:0.016;
+  mouse.x+=(mouse.tx-mouse.x)*0.05; mouse.y+=(mouse.ty-mouse.y)*0.05;
+  const breath=0.5+0.5*Math.sin(t*0.6), zoom=1+breath*0.06;
+  const pcx=CX+mouse.x*30, pcy=CY+mouse.y*30;
+  g.clearRect(0,0,W,H);
+
+  // blinking stars (twinkle in place)
+  for(const b of blink){ const tw=0.5+0.5*Math.sin(t*b.sp+b.ph); g.beginPath(); g.arc(b.x+mouse.x*6,b.y+mouse.y*6,b.r*(0.55+tw*0.85),0,6.28); g.fillStyle='rgba(200,230,255,'+(0.06+tw*0.6)+')'; g.fill(); }
+
+  // warp stars
+  const spd=(reduce?0:1)*(0.008+breath*0.016);
+  for(const s of warp){ s.z-=spd; if(s.z<0.05){ s.x=(Math.random()-.5)*W; s.y=(Math.random()-.5)*H; s.z=1; }
+    const sx=pcx+s.x/s.z, sy=pcy+s.y/s.z, k=1-s.z; if(sx<-60||sx>W+60||sy<-60||sy>H+60) continue;
+    const z2=Math.min(1,s.z+spd*7), px=pcx+s.x/z2, py=pcy+s.y/z2;
+    g.beginPath(); g.moveTo(px,py); g.lineTo(sx,sy); g.lineWidth=Math.max(.4,k*1.8); g.strokeStyle='rgba(160,225,255,'+(0.08+k*0.75)+')'; g.stroke();
+    g.beginPath(); g.arc(sx,sy,Math.max(.3,k*1.7),0,6.28); g.fillStyle='rgba(195,235,255,'+(0.2+k*0.6)+')'; g.fill(); }
+
+  // living star web
+  for(const p of web){ p.x+=p.vx; p.y+=p.vy; p.t+=0.02; if(p.x<0||p.x>W)p.vx*=-1; if(p.y<0||p.y>H)p.vy*=-1; }
+  const sc=(x,y)=>[pcx+(x-CX)*zoom+mouse.x*-10,pcy+(y-CY)*zoom+mouse.y*-10];
+  for(let i=0;i<web.length;i++){ const[ax,ay]=sc(web[i].x,web[i].y);
+    for(let j=i+1;j<web.length;j++){ const[bx,by]=sc(web[j].x,web[j].y); const d=Math.hypot(ax-bx,ay-by);
+      if(d<130){ g.beginPath(); g.moveTo(ax,ay); g.lineTo(bx,by); g.strokeStyle='rgba(90,180,255,'+((1-d/130)*0.22*(0.5+breath*0.9))+')'; g.lineWidth=1; g.stroke(); } }
+    const tw=0.5+0.5*Math.sin(web[i].t); g.beginPath(); g.arc(ax,ay,1.5*(0.7+tw),0,6.28); g.fillStyle='rgba(180,225,255,'+(0.25+tw*0.45)+')'; g.fill(); }
+
+  // icon positions: float + breathing zoom + cursor attraction
+  const mxp=CX+mouse.x*CX, myp=CY+mouse.y*CY;
+  icons.forEach(n=>{ let bx=n.bx*W+Math.sin(t*n.sp+n.ph)*12, by=n.by*H+Math.cos(t*n.sp*0.9+n.ph)*14;
+    let zx=pcx+(bx-CX)*zoom, zy=pcy+(by-CY)*zoom;
+    const dx=mxp-zx, dy=myp-zy, near2=Math.max(0,1-Math.hypot(dx,dy)/240);
+    n.x=zx+dx*near2*0.14; n.y=zy+dy*near2*0.14;
+    const scale=1+breath*0.14+near2*0.25, glow=6+breath*22+near2*34, op=0.45+breath*0.30+near2*0.4;
+    n.el.style.transform=`translate(${n.x}px,${n.y}px) translate(-50%,-50%) scale(${scale})`;
+    n.el.style.opacity=Math.min(1,op);
+    n.el.style.filter=`drop-shadow(0 0 ${glow}px rgba(70,200,255,${0.45+near2*0.5}))`;
+  });
+
+  // proximity network between icons
+  for(let i=0;i<N;i++) for(let j=i+1;j<N;j++){ const d=Math.hypot(icons[i].x-icons[j].x,icons[i].y-icons[j].y);
+    if(d<300){ g.beginPath(); g.moveTo(icons[i].x,icons[i].y); g.lineTo(icons[j].x,icons[j].y);
+      g.strokeStyle='rgba(110,215,255,'+((1-d/300)*0.5*(0.7+breath*0.7))+')'; g.lineWidth=1.8; g.stroke(); } }
+
+  // flowing pulses along currently-near pairs
+  pulses.forEach(pl=>{ if(!reduce) pl.p+=pl.sp; if(pl.p>1||!near(pl.a,pl.b)){ reassign(pl); if(!near(pl.a,pl.b)) return; }
+    const a=icons[pl.a], b=icons[pl.b], x=a.x+(b.x-a.x)*pl.p, y=a.y+(b.y-a.y)*pl.p;
+    const grd=g.createRadialGradient(x,y,0,x,y,6); grd.addColorStop(0,'rgba(170,240,255,.95)'); grd.addColorStop(1,'rgba(70,200,255,0)');
+    g.beginPath(); g.arc(x,y,6,0,6.28); g.fillStyle=grd; g.fill(); });
+
+  requestAnimationFrame(frame);
+}
+frame();
+addEventListener('mousemove',e=>{ mouse.tx=(e.clientX/innerWidth-.5)*2; mouse.ty=(e.clientY/innerHeight-.5)*2;
+  const c=document.getElementById('card'); if(c) c.style.transform=`rotateY(${mouse.tx*6}deg) rotateX(${-mouse.ty*6}deg)`; });
+</script>
+</body>
+</html>

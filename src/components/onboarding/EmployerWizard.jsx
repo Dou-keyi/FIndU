@@ -15,6 +15,8 @@ import { Textarea } from '../ui/textarea';
 import { toast } from '../ui/use-toast';
 import StepIndicator from './StepIndicator';
 import SkillSelector from './SkillSelector';
+import JoinCompanyDialog from './JoinCompanyDialog';
+import { checkDomainExists } from '../../lib/companyJoinMock';
 
 const INDUSTRIES = ['Technology', 'Finance', 'Healthcare', 'E-commerce', 'Logistics', 'Consulting', 'Education', 'Other'];
 const HEADCOUNT_RANGES = ['1–10', '11–50', '51–200', '201–1000', '1000+'];
@@ -36,6 +38,11 @@ export default function EmployerWizard() {
   const [ssmNumber, setSsmNumber] = useState('');
   const [industry, setIndustry] = useState('');
   const [headcountRange, setHeadcountRange] = useState('');
+
+  // Join existing company / duplicate-domain guard
+  const [showJoinDialog, setShowJoinDialog] = useState(false);
+  const [domainBlock, setDomainBlock] = useState(null); // existing company found for this domain
+  const [checkingDomain, setCheckingDomain] = useState(false);
 
   // Step 2 — First Job
   const [jobTitle, setJobTitle] = useState('');
@@ -74,8 +81,23 @@ export default function EmployerWizard() {
     return Object.keys(newErrors).length === 0;
   }
 
-  function handleNext() {
+  async function handleNext() {
     if (!validateStep()) return;
+
+    // Step 1 — block creating a duplicate company for an already-registered domain
+    if (step === 1) {
+      setCheckingDomain(true);
+      try {
+        const existing = await checkDomainExists(domain.trim());
+        if (existing) {
+          setDomainBlock(existing);
+          return; // stop and push them to the join flow
+        }
+      } finally {
+        setCheckingDomain(false);
+      }
+    }
+
     setStep((s) => s + 1);
     setErrors({});
   }
@@ -83,6 +105,24 @@ export default function EmployerWizard() {
   function handleBack() {
     setStep((s) => s - 1);
     setErrors({});
+  }
+
+  // Joiner path (frontend mock): mark onboarding complete locally so the demo proceeds.
+  // Later: join_company_by_code RPC creates the hr_seat (role 'member') and we refetch the profile.
+  async function handleJoined(company) {
+    setShowJoinDialog(false);
+    // The RPC already created the member seat; mark onboarding complete.
+    await supabase.from('profiles').update({ onboarding_complete: true }).eq('id', user.id);
+    useAuthStore.getState().setProfile({
+      ...useAuthStore.getState().profile,
+      onboarding_complete: true,
+    });
+    toast({
+      title: `Joined ${company.name} 🎉`,
+      description: 'You can start as a team member.',
+      variant: 'success',
+    });
+    navigate('/globe', { replace: true });
   }
 
   async function handleFinish() {
@@ -105,27 +145,29 @@ export default function EmployerWizard() {
 
       if (companyError) throw companyError;
 
-      // 2. INSERT first job
-      const { error: jobError } = await supabase
-        .from('jobs')
-        .insert({
-          company_id: companyData.id,
-          posted_by: user.id,
-          title: jobTitle,
-          description,
-          responsibilities: responsibilities.split('\n').map(s => s.trim()).filter(Boolean),
-          benefits: benefits.split('\n').map(s => s.trim()).filter(Boolean),
-          skills_required: requiredSkills,
-          experience_level: experienceLevel.toLowerCase(),
-          work_type: workType.toLowerCase(),
-          position_type: positionType,
-          salary_min: salaryMin ? parseInt(salaryMin, 10) : null,
-          salary_max: salaryMax ? parseInt(salaryMax, 10) : null,
-          currency: 'MYR',
-          status: 'open',
-        });
+      // 2. INSERT first job (skipped if the owner chose to add one later)
+      if (jobTitle.trim()) {
+        const { error: jobError } = await supabase
+          .from('jobs')
+          .insert({
+            company_id: companyData.id,
+            posted_by: user.id,
+            title: jobTitle,
+            description,
+            responsibilities: responsibilities.split('\n').map(s => s.trim()).filter(Boolean),
+            benefits: benefits.split('\n').map(s => s.trim()).filter(Boolean),
+            skills_required: requiredSkills,
+            experience_level: experienceLevel.toLowerCase(),
+            work_type: workType.toLowerCase(),
+            position_type: positionType,
+            salary_min: salaryMin ? parseInt(salaryMin, 10) : null,
+            salary_max: salaryMax ? parseInt(salaryMax, 10) : null,
+            currency: 'MYR',
+            status: 'open',
+          });
 
-      if (jobError) throw jobError;
+        if (jobError) throw jobError;
+      }
 
       // 3. UPSERT profile → onboarding_complete
       const { error: profileError } = await supabase
@@ -163,6 +205,15 @@ export default function EmployerWizard() {
       {step === 1 && (
         <Card>
           <CardContent className="pt-6 space-y-5">
+            <div className="flex justify-end -mb-2">
+              <button
+                type="button"
+                onClick={() => setShowJoinDialog(true)}
+                className="text-xs font-semibold text-brand hover:text-brand-dark transition-colors"
+              >
+                Already have a company? Join with code
+              </button>
+            </div>
             <div className="text-center mb-2">
               <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-brand-100">
                 <Building2 className="h-5 w-5 text-brand" />
@@ -189,7 +240,7 @@ export default function EmployerWizard() {
                 id="company-domain"
                 placeholder="e.g. grab.com"
                 value={domain}
-                onChange={(e) => setDomain(e.target.value)}
+                onChange={(e) => { setDomain(e.target.value); if (domainBlock) setDomainBlock(null); }}
                 className={errors.domain ? 'border-red-500' : ''}
               />
               {errors.domain && <p className="text-xs text-red-500">{errors.domain}</p>}
@@ -246,7 +297,26 @@ export default function EmployerWizard() {
               {errors.headcountRange && <p className="text-xs text-red-500">{errors.headcountRange}</p>}
             </div>
 
-            <Button onClick={handleNext} className="w-full">
+            {domainBlock && (
+              <div className="rounded-lg border bg-amber-50 border-amber-200 p-3 text-sm">
+                <p className="font-medium text-amber-800">
+                  {domainBlock.name} is already registered on this domain.
+                </p>
+                <p className="text-xs text-amber-700 mt-0.5">
+                  To avoid a duplicate company, join the existing one with its company code.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => { setDomainBlock(null); setShowJoinDialog(true); }}
+                  className="mt-2 text-xs font-semibold text-amber-900 underline underline-offset-2 hover:text-amber-950"
+                >
+                  Enter company code &rarr;
+                </button>
+              </div>
+            )}
+
+            <Button onClick={handleNext} disabled={checkingDomain} className="w-full">
+              {checkingDomain && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Continue
             </Button>
           </CardContent>
@@ -257,6 +327,15 @@ export default function EmployerWizard() {
       {step === 2 && (
         <Card>
           <CardContent className="pt-6 space-y-5">
+            <div className="flex justify-end -mb-2">
+              <button
+                type="button"
+                onClick={() => { setErrors({}); setStep(3); }}
+                className="text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Skip for now &rarr;
+              </button>
+            </div>
             <div className="text-center mb-2">
               <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-brand-100">
                 <FileText className="h-5 w-5 text-brand" />
@@ -511,6 +590,12 @@ export default function EmployerWizard() {
           </CardContent>
         </Card>
       )}
+
+      <JoinCompanyDialog
+        open={showJoinDialog}
+        onClose={() => setShowJoinDialog(false)}
+        onJoined={handleJoined}
+      />
     </div>
   );
 }

@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LogOut, User, PlusCircle } from 'lucide-react';
+import { LogOut, User, PlusCircle, Users } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { supabase } from '../../lib/supabase';
 import { getInitials, getAvatarColor } from '../../lib/avatarUtils';
 import LogoutConfirmModal from './LogoutConfirmModal';
+import NotificationsBell from '../NotificationsBell';
 
 export default function MobileHeader() {
   const navigate = useNavigate();
@@ -37,7 +38,9 @@ export default function MobileHeader() {
         <span className="font-semibold text-[15px] text-gray-900 tracking-tight">Career OS</span>
       </div>
 
-      <div className="relative">
+      <div className="flex items-center gap-1">
+        <NotificationsBell />
+        <div className="relative">
         <button
           onClick={() => setMenuOpen(!menuOpen)}
           className="flex h-8 w-8 items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand shadow-sm ring-1 ring-gray-100"
@@ -65,6 +68,15 @@ export default function MobileHeader() {
                 <User className="w-4 h-4" aria-hidden="true" />
                 View Profile
               </button>
+              {profile?.role === 'employer' && (
+                <button
+                  onClick={() => { setMenuOpen(false); navigate('/team'); }}
+                  className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-gray-600 hover:bg-gray-50 transition-colors focus-visible:outline-none focus-visible:bg-gray-50 font-medium"
+                >
+                  <Users className="w-4 h-4" aria-hidden="true" />
+                  My Team
+                </button>
+              )}
               <button
                 onClick={handleLogoutClick}
                 className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors focus-visible:outline-none focus-visible:bg-red-50 font-medium"
@@ -75,6 +87,7 @@ export default function MobileHeader() {
             </div>
           </>
         )}
+        </div>
       </div>
     </header>
       <LogoutConfirmModal 

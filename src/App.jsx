@@ -17,6 +17,7 @@ import OnboardingPage from './pages/OnboardingPage';
 import AuthPage from './pages/AuthPage';
 import PostJobPage from './pages/PostJobPage';
 import EditJobPage from './pages/EditJobPage';
+import TeamPage from './pages/TeamPage';
 
 export default function App() {
   return (
@@ -52,6 +53,7 @@ export default function App() {
             <Route path="/create-post" element={<CreatePostPage />} />
             <Route path="/post-job" element={<PostJobPage />} />
             <Route path="/edit-job/:jobId" element={<EditJobPage />} />
+            <Route path="/team" element={<TeamPage />} />
           </Route>
         </Routes>
         <Toaster />
