@@ -24,9 +24,10 @@
   .badge{ display:inline-flex; align-items:center; gap:8px; padding:8px 16px; border-radius:999px; font-size:14px; font-weight:600;
     background:rgba(40,80,160,.25); border:1px solid rgba(90,150,255,.35); backdrop-filter:blur(6px); margin-bottom:26px; }
   h1{ font-size:clamp(32px,4.6vw,64px); line-height:1.04; font-weight:800; letter-spacing:-.02em; }
-  .shimmer{ background:linear-gradient(100deg,#8fdcff 10%,#fff 30%,#46c8ff 50%,#7c3aed 70%,#8fdcff 90%); background-size:250% 100%;
-    -webkit-background-clip:text; background-clip:text; color:transparent; animation:sweep 5s linear infinite; }
-  @keyframes sweep{ to{ background-position:-50% 0; } }
+  .shimmer{ background:linear-gradient(90deg,#3aa0ff 0%,#9be8ff 22%,#ffffff 50%,#a78bfa 78%,#3aa0ff 100%); background-size:200% auto;
+    -webkit-background-clip:text; background-clip:text; color:transparent; animation:sweep 4s linear infinite;
+    filter:drop-shadow(0 0 14px rgba(70,200,255,.45)); }
+  @keyframes sweep{ from{ background-position:0% center; } to{ background-position:200% center; } }
   .sub{ margin-top:24px; max-width:430px; color:#aab6d6; font-size:17px; line-height:1.6; }
 
   .card-wrap{ display:grid; place-items:center; transform-style:preserve-3d; }
@@ -75,7 +76,7 @@ let warp=[], web=[], blink=[];
 function resize(){ W=cv.width=innerWidth; H=cv.height=innerHeight; CX=W/2; CY=H/2;
   warp=Array.from({length:260},()=>({x:(Math.random()-.5)*W,y:(Math.random()-.5)*H,z:Math.random()+.05}));
   web=Array.from({length:30},()=>({x:Math.random()*W,y:Math.random()*H,vx:(Math.random()-.5)*.18,vy:(Math.random()-.5)*.18,t:Math.random()*6.3}));
-  blink=Array.from({length:90},()=>({x:Math.random()*W,y:Math.random()*H,r:Math.random()*1.3+0.3,ph:Math.random()*6.3,sp:1+Math.random()*2.5}));
+  blink=Array.from({length:160},()=>({x:Math.random()*W,y:Math.random()*H,r:Math.random()*1.3+0.3,ph:Math.random()*6.3,sp:1+Math.random()*2.5}));
 }
 resize(); addEventListener('resize',resize);
 
