@@ -9,9 +9,7 @@ import { getInitials, getAvatarColor } from '../../lib/avatarUtils';
 const statusColors = {
   applied: 'bg-slate-100 text-slate-600 border-slate-200',
   viewed: 'bg-blue-50 text-blue-600 border-blue-200',
-  shortlisted: 'bg-violet-50 text-violet-600 border-violet-200',
-  pending: 'bg-amber-50 text-amber-600 border-amber-200',
-  accepted: 'bg-emerald-50 text-emerald-600 border-emerald-200',
+  shortlisted: 'bg-emerald-50 text-emerald-600 border-emerald-200',
   rejected: 'bg-red-50 text-red-600 border-red-200',
 };
 
@@ -19,8 +17,6 @@ const statusLabels = {
   applied: 'Applied',
   viewed: 'Viewed',
   shortlisted: 'Shortlisted',
-  pending: 'Pending',
-  accepted: 'Accepted',
   rejected: 'Rejected',
 };
 
@@ -35,60 +31,52 @@ export default function ApplicationCard({ app, isEmployer, onStatusChange, onVie
 
     return (
       <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm relative overflow-hidden group">
-        <div className="flex flex-col gap-3">
-          <div className="flex gap-3">
-            {/* Avatar */}
-            <div
-              className="w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center text-sm font-semibold"
-              style={{ backgroundColor: colors.bg, color: colors.text }}
-            >
-              {candidate?.avatar_url ? (
-                <img src={candidate.avatar_url} alt="" className="w-full h-full rounded-full object-cover" />
-              ) : (
-                initials
-              )}
-            </div>
-
-            <div className="flex-1 min-w-0">
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <p className="text-[14px] font-bold text-slate-900 truncate">
-                    {candidate?.full_name || 'Unknown Candidate'}
-                  </p>
-                  <p className="text-xs text-slate-500 line-clamp-1 mt-0.5">{candidate?.headline}</p>
-                </div>
-              </div>
-            </div>
+        <div className="flex gap-3">
+          {/* Avatar */}
+          <div
+            className="w-12 h-12 rounded-full flex-shrink-0 flex items-center justify-center text-sm font-semibold mt-1"
+            style={{ backgroundColor: colors.bg, color: colors.text }}
+          >
+            {candidate?.avatar_url ? (
+              <img src={candidate.avatar_url} alt="" className="w-full h-full rounded-full object-cover" />
+            ) : (
+              initials
+            )}
           </div>
 
-          {/* Meta row */}
-          <div className="flex items-center justify-between border-t border-slate-100 pt-3 mt-1">
-            <div className="min-w-0 flex-1 pr-2">
-              <p className="text-xs font-semibold text-brand truncate">
-                {app.job?.title}
-              </p>
-              <span className="text-[10px] text-slate-400 block mt-0.5">
-                Applied {formatRelativeTime(app.applied_at)}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <p className="text-[15px] font-bold text-slate-900 truncate">
+                  {candidate?.full_name || 'Unknown Candidate'}
+                </p>
+                <p className="text-xs text-slate-500 truncate mt-0.5">{candidate?.headline}</p>
+              </div>
+              <span className="text-[10px] text-slate-400 whitespace-nowrap mt-1">
+                {formatRelativeTime(app.applied_at)}
               </span>
             </div>
 
-            {/* Status Select */}
-            <div className="relative flex-shrink-0">
-              <select
-                value={app.status}
-                onChange={(e) => onStatusChange?.(app.id, e.target.value)}
-                className={`appearance-none pl-2.5 pr-6 py-1 text-[11px] font-bold uppercase tracking-wider rounded-md border focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent transition-colors cursor-pointer ${statusColors[app.status]}`}
-              >
-                <option value="applied">Applied</option>
-                <option value="viewed">Viewed</option>
-                <option value="shortlisted">Shortlisted</option>
-                <option value="pending">Pending</option>
-                <option value="accepted">Accepted</option>
-                <option value="rejected">Rejected</option>
-              </select>
-              <ChevronDown className={`absolute right-1.5 top-1.5 w-3 h-3 pointer-events-none ${statusColors[app.status].split(' ')[1]}`} />
+            <div className="mt-2.5 flex items-center justify-between">
+              <p className="text-xs font-medium text-brand truncate max-w-[150px]">
+                {app.job?.title}
+              </p>
+
+              {/* Status Select */}
+              <div className="relative flex-shrink-0">
+                <select
+                  value={app.status}
+                  onChange={(e) => onStatusChange?.(app.id, e.target.value)}
+                  className={`appearance-none pl-3 pr-7 py-1 text-xs font-semibold rounded-full border focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent transition-colors cursor-pointer ${statusColors[app.status]}`}
+                >
+                  <option value="applied">Applied</option>
+                  <option value="viewed">Viewed</option>
+                  <option value="shortlisted">Shortlisted</option>
+                  <option value="rejected">Rejected</option>
+                </select>
+                <ChevronDown className={`absolute right-2 top-1.5 w-3 h-3 pointer-events-none ${statusColors[app.status].split(' ')[1]}`} />
+              </div>
             </div>
-          </div>
 
             {/* AI Context */}
             {app.ai_context && (
@@ -100,20 +88,22 @@ export default function ApplicationCard({ app, isEmployer, onStatusChange, onVie
               </div>
             )}
 
-          {/* Actions */}
-          <div className="mt-3 flex gap-2">
-            <button
-              onClick={() => onViewPortfolio?.(candidate?.id)}
-              className="flex-1 py-1.5 px-2 rounded-lg border border-slate-200 text-[11px] font-semibold text-slate-600 hover:bg-slate-50 transition-colors flex items-center justify-center gap-1.5"
-            >
-              View Profile
-            </button>
-            <button
-              onClick={() => onMessage?.(candidate?.id, app.job?.id, app.job?.title)}
-              className="flex-1 py-1.5 px-2 rounded-lg bg-brand text-white text-[11px] font-semibold hover:bg-brand-dark transition-colors shadow-sm"
-            >
-              Message
-            </button>
+            {/* Actions */}
+            <div className="mt-4 flex gap-2">
+              <button
+                onClick={() => onViewPortfolio?.(candidate?.id)}
+                className="flex-1 py-2 px-3 rounded-lg border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors flex items-center justify-center gap-1.5"
+              >
+                View Portfolio
+                <ExternalLink className="w-3 h-3" />
+              </button>
+              <button
+                onClick={() => onMessage?.(candidate?.id, app.job?.id, app.job?.title)}
+                className="flex-1 py-2 px-3 rounded-lg bg-brand text-white text-xs font-semibold hover:bg-brand-dark transition-colors shadow-sm"
+              >
+                Message
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -146,12 +136,17 @@ export default function ApplicationCard({ app, isEmployer, onStatusChange, onVie
         </div>
 
         <div className="flex-1 min-w-0">
-          <div className="flex items-start justify-between gap-2 border-b border-slate-100 pb-3">
+          <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
-              <p className="text-[14px] font-bold text-slate-900 line-clamp-2">
+              <p className="text-[15px] font-bold text-slate-900 truncate">
                 {job?.title || 'Unknown Role'}
               </p>
-              <p className="text-[11px] text-slate-500 truncate mt-0.5">{company?.name}</p>
+              <p className="text-xs text-slate-500 truncate mt-0.5">{company?.name}</p>
+            </div>
+            
+            {/* Status Pill */}
+            <div className={`px-2.5 py-0.5 rounded-full border text-[10px] font-bold uppercase tracking-wide flex-shrink-0 mt-0.5 ${statusColors[app.status]}`}>
+              {statusLabels[app.status]}
             </div>
           </div>
 
@@ -174,14 +169,9 @@ export default function ApplicationCard({ app, isEmployer, onStatusChange, onVie
             )}
           </div>
 
-          <div className="flex items-center justify-between mt-3">
-            <div className={`px-2 py-0.5 rounded-md border text-[10px] font-bold uppercase tracking-wide flex-shrink-0 ${statusColors[app.status]}`}>
-              {statusLabels[app.status]}
-            </div>
-            <p className="text-[10px] font-medium text-slate-400">
-              {formatRelativeTime(app.applied_at)}
-            </p>
-          </div>
+          <p className="text-[10px] text-slate-400 mt-2.5">
+            Applied {formatRelativeTime(app.applied_at)}
+          </p>
 
           {/* Expandable AI Context */}
           {app.ai_context && (
@@ -224,16 +214,17 @@ export default function ApplicationCard({ app, isEmployer, onStatusChange, onVie
           )}
 
           {/* Actions */}
-          <div className="mt-3 flex gap-2">
+          <div className="mt-4 flex gap-2">
             <button
               onClick={() => onViewPortfolio?.(company?.id)}
-              className="flex-1 py-1.5 px-2 rounded-lg border border-slate-200 text-[11px] font-semibold text-slate-600 hover:bg-slate-50 transition-colors flex items-center justify-center gap-1.5"
+              className="flex-1 py-2 px-3 rounded-lg border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors flex items-center justify-center gap-1.5"
             >
-              Company
+              View Company
+              <ExternalLink className="w-3 h-3" />
             </button>
             <button
               onClick={() => onMessage?.(job?.posted_by, job?.id, job?.title)}
-              className="flex-1 py-1.5 px-2 rounded-lg bg-brand text-white text-[11px] font-semibold hover:bg-brand-dark transition-colors shadow-sm"
+              className="flex-1 py-2 px-3 rounded-lg bg-brand text-white text-xs font-semibold hover:bg-brand-dark transition-colors shadow-sm"
             >
               Message
             </button>

@@ -2,11 +2,10 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, Users, Briefcase } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { 
   getCandidateApplications, 
-  getEmployerJobs, 
+  getEmployerJobIds, 
   getEmployerApplications, 
   updateApplicationStatus,
   getSavedJobs,
@@ -14,7 +13,7 @@ import {
   applyToJob
 } from '../lib/trackingData';
 import { toast } from '../components/ui/use-toast';
-import KanbanBoard from '../components/tracking/KanbanBoard';
+import StatusPipeline from '../components/tracking/StatusPipeline';
 import ApplicationCard from '../components/tracking/ApplicationCard';
 import SavedJobCard from '../components/tracking/SavedJobCard';
 import ApplyConfirmSheet from '../components/swipe/ApplyConfirmSheet';
@@ -28,8 +27,6 @@ export default function TrackingPage() {
   const [activeStatus, setActiveStatus] = useState(null);
   
   const [applications, setApplications] = useState([]);
-  const [employerJobs, setEmployerJobs] = useState([]);
-  const [selectedJobId, setSelectedJobId] = useState(null);
   const [savedJobs, setSavedJobs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [removingIds, setRemovingIds] = useState(new Set());
@@ -42,10 +39,7 @@ export default function TrackingPage() {
     setLoading(true);
 
     if (isEmployer) {
-      const jobs = await getEmployerJobs(user.id);
-      setEmployerJobs(jobs);
-
-      const jobIds = jobs.map(j => j.id);
+      const jobIds = await getEmployerJobIds(user.id);
       if (jobIds.length > 0) {
         const apps = await getEmployerApplications(jobIds);
         setApplications(apps);
@@ -65,8 +59,16 @@ export default function TrackingPage() {
     loadData();
   }, [user, isEmployer]);
 
-  // Filtered applications is not used for Kanban since Kanban handles all statuses
-  // Keep saved jobs filter logic separate
+  // Calculate pipeline counts
+  const pipelineCounts = applications.reduce((acc, app) => {
+    acc[app.status] = (acc[app.status] || 0) + 1;
+    return acc;
+  }, {});
+
+  // Filtered applications
+  const filteredApplications = activeStatus
+    ? applications.filter(app => app.status === activeStatus)
+    : applications;
 
   // Handlers
   const handleStatusChange = async (appId, newStatus) => {
@@ -174,104 +176,88 @@ export default function TrackingPage() {
           </div>
         )}
 
-        {/* Pipeline / Headers omitted for Kanban board since it's full height */}
+        {/* Pipeline (Applications tab only) */}
+        <AnimatePresence mode="popLayout">
+          {activeTab === 'applications' && !loading && applications.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="mt-4 overflow-hidden"
+            >
+              <StatusPipeline 
+                counts={pipelineCounts} 
+                activeStatus={activeStatus} 
+                onSelectStatus={setActiveStatus} 
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* Main Content */}
-      <div className={`flex-1 ${activeTab === 'applications' ? 'overflow-hidden' : 'overflow-y-auto px-4 py-6'}`}>
-        {loading ? (
-          <div className="flex justify-center py-12">
-            <div className="spinner" />
-          </div>
-        ) : activeTab === 'applications' ? (
-          <div className="h-full pt-2">
-            {isEmployer && !selectedJobId ? (
-              // Job Selection Screen for Employer
-              <div className="max-w-4xl mx-auto space-y-4">
-                <h2 className="text-lg font-bold text-slate-800 mb-4 px-1">Select a Job to Track</h2>
-                {employerJobs.length > 0 ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {employerJobs.map(job => (
-                      <button
-                        key={job.id}
-                        onClick={() => setSelectedJobId(job.id)}
-                        className="bg-white border border-slate-200 p-5 rounded-2xl shadow-sm hover:shadow-md hover:border-brand/30 transition-all text-left group flex flex-col justify-between h-32 relative overflow-hidden"
-                      >
-                        <div className="absolute top-0 left-0 w-1.5 h-full bg-brand opacity-0 group-hover:opacity-100 transition-opacity" />
-                        <div>
-                          <h3 className="font-bold text-slate-900 text-[15px] truncate pr-8">{job.title}</h3>
-                          <p className="text-xs text-slate-500 mt-1">
-                            Posted {new Date(job.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-2 mt-auto">
-                          <span className="flex items-center gap-1.5 bg-brand-50 text-brand-700 px-2.5 py-1 rounded-lg text-xs font-bold">
-                            <Users className="w-3.5 h-3.5" />
-                            {job.applications?.[0]?.count || job.applications?.length || 0} Applicants
-                          </span>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-16 px-6 bg-white rounded-2xl border border-slate-200">
-                    <div className="mx-auto w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4">
-                      <Briefcase className="w-6 h-6 text-slate-400" />
-                    </div>
-                    <h3 className="text-slate-900 font-bold mb-2">No Jobs Posted</h3>
-                    <p className="text-sm text-slate-500">
-                      You haven't posted any jobs yet. Head to the + menu to create one!
-                    </p>
-                  </div>
-                )}
-              </div>
+      <div className="flex-1 overflow-y-auto px-4 py-6">
+        <div className="max-w-2xl mx-auto space-y-4">
+          
+          {loading ? (
+            <div className="flex justify-center py-12">
+              <div className="spinner" />
+            </div>
+          ) : activeTab === 'applications' ? (
+            /* Applications List */
+            filteredApplications.length > 0 ? (
+              <AnimatePresence mode="popLayout">
+                {filteredApplications.map((app, i) => (
+                  <motion.div
+                    key={app.id}
+                    layout
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    transition={{ duration: 0.2, delay: i * 0.05 }}
+                  >
+                    <ApplicationCard 
+                      app={app} 
+                      isEmployer={isEmployer}
+                      onStatusChange={handleStatusChange}
+                      onViewPortfolio={(id) => navigate(isEmployer ? `/portfolio/${id}` : `/company/${id}`)}
+                      onMessage={(targetUserId, jobId, jobTitle) => {
+                        const targetProfile = isEmployer 
+                          ? app.candidate 
+                          : {
+                              id: targetUserId,
+                              full_name: app.job?.company?.name || 'Company',
+                              avatar_url: app.job?.company?.logo_url,
+                              headline: 'Employer',
+                            };
+                        navigate('/messaging', { 
+                          state: { 
+                            newConversation: { targetProfile, jobId, jobTitle } 
+                          } 
+                        });
+                      }}
+                    />
+                  </motion.div>
+                ))}
+              </AnimatePresence>
             ) : (
-              // Kanban Board
-              <div className="h-full flex flex-col">
-                {isEmployer && selectedJobId && (
-                  <div className="flex items-center justify-between mb-4 px-1 shrink-0">
-                    <button
-                      onClick={() => setSelectedJobId(null)}
-                      className="flex items-center gap-1.5 text-sm font-semibold text-slate-600 hover:text-brand transition-colors bg-white px-3 py-1.5 rounded-lg border border-slate-200 shadow-sm"
-                    >
-                      <ChevronLeft className="w-4 h-4" />
-                      Back to Jobs
-                    </button>
-                    <h2 className="text-sm font-bold text-slate-800 truncate pl-4">
-                      {employerJobs.find(j => j.id === selectedJobId)?.title}
-                    </h2>
-                  </div>
-                )}
-                <div className="flex-1 min-h-0">
-                  <KanbanBoard 
-                    applications={isEmployer ? applications.filter(a => a.job?.id === selectedJobId) : applications}
-                    isEmployer={isEmployer}
-                    onStatusChange={handleStatusChange}
-                    onViewPortfolio={(id) => navigate(isEmployer ? `/portfolio/${id}` : `/company/${id}`)}
-                    onMessage={(targetUserId, jobId, jobTitle) => {
-                      const targetProfile = isEmployer 
-                        ? applications.find(a => a.candidate?.id === targetUserId)?.candidate 
-                        : {
-                            id: targetUserId,
-                            full_name: applications.find(a => a.job?.id === jobId)?.job?.company?.name || 'Company',
-                            avatar_url: applications.find(a => a.job?.id === jobId)?.job?.company?.logo_url,
-                            headline: 'Employer',
-                          };
-                      navigate('/messaging', { 
-                        state: { 
-                          newConversation: { targetProfile, jobId, jobTitle } 
-                        } 
-                      });
-                    }}
-                  />
+              <div className="text-center py-16 px-6">
+                <div className="mx-auto w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4">
+                  <span className="text-2xl">📝</span>
                 </div>
+                <h3 className="text-slate-900 font-bold mb-2">No applications found</h3>
+                <p className="text-sm text-slate-500">
+                  {isEmployer 
+                    ? "You don't have any applications for your jobs yet."
+                    : activeStatus 
+                      ? `No applications with status '${activeStatus}'.` 
+                      : "Head to the Globe to find your first match."}
+                </p>
               </div>
-            )}
-          </div>
-        ) : (
-          <div className="max-w-2xl mx-auto space-y-4">
-            {/* Saved Jobs List */}
-            {savedJobs.length > 0 ? (
+            )
+          ) : (
+            /* Saved Jobs List */
+            savedJobs.length > 0 ? (
               <AnimatePresence mode="popLayout">
                 {savedJobs.map((sj, i) => (
                   <motion.div
@@ -301,9 +287,10 @@ export default function TrackingPage() {
                   Swipe up ↑ on the Globe to save jobs for later.
                 </p>
               </div>
-            )}
-          </div>
-        )}
+            )
+          )}
+          
+        </div>
       </div>
 
       {/* Confirmation Sheet */}
