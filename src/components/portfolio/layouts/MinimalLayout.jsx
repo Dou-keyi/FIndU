@@ -3,7 +3,7 @@ import React from 'react';
 import {
   Loader2, Pencil, Trash2, Check, X, Camera, Plus, Sparkles
 } from 'lucide-react';
-import { motion, Reorder, useDragControls } from 'framer-motion';
+import { motion, Reorder, useDragControls, AnimatePresence } from 'framer-motion';
 import { SECTION_META, InlineItemForm, ALL_SECTIONS } from './SharedComponents';
 
 const DraggableSection = ({ type, renderContent }) => {
@@ -25,8 +25,8 @@ const DraggableSection = ({ type, renderContent }) => {
         cursor: 'grabbing'
       }}
       transition={{ 
-        layout: { type: "spring", stiffness: 40, damping: 12 },
-        default: { type: "spring", stiffness: 200, damping: 20 }
+        layout: { type: "tween", duration: 0.3, ease: "easeOut" },
+        default: { type: "tween", duration: 0.3, ease: "easeOut" }
       }}
     >
       {renderContent(type, dragControls)}
@@ -44,7 +44,7 @@ export default function MinimalLayout({
   editSkillsInput, setEditSkillsInput,
   savingSkills, handleSaveSkills, handleDeleteSkill,
   editName, setEditName, editHeadline, setEditHeadline,
-  editPhone, setEditPhone, editLocation, setEditLocation,
+  editPhone, setEditPhone, editEmail, setEditEmail, editLocation, setEditLocation,
   savingProfile, handleSaveProfile,
   avatarInputRef, uploadingAvatar, handleAvatarUpload,
   handleSaveItem, handleDeleteItem,
@@ -81,7 +81,7 @@ export default function MinimalLayout({
             <div className="flex items-center gap-2">
               {isOwn && dragControls && (
                 <div
-                  onPointerDown={(e) => dragControls.start(e)}
+                  onPointerDown={(e) => { e.preventDefault(); dragControls.start(e); }}
                   style={{ touchAction: 'none' }}
                   className="cursor-grab active:cursor-grabbing p-1 -ml-1 rounded hover:bg-gray-50 text-gray-300 transition-colors no-print"
                   title="Hold and drag to reorder"
@@ -93,7 +93,7 @@ export default function MinimalLayout({
             </div>
             {isOwn && (
               <button onClick={() => { setEditingSkills(true); setEditSkillsInput(''); }}
-                className="p-1 rounded-full hover:bg-gray-100 transition-colors opacity-0 group-hover:opacity-100 no-print">
+                className="p-1 rounded-full hover:bg-gray-100 transition-colors no-print">
                 <Plus className="w-3.5 h-3.5 text-gray-300" />
               </button>
             )}
@@ -152,7 +152,7 @@ export default function MinimalLayout({
             <div className="flex items-center gap-2">
               {isOwn && dragControls && (
                 <div
-                  onPointerDown={(e) => dragControls.start(e)}
+                  onPointerDown={(e) => { e.preventDefault(); dragControls.start(e); }}
                   style={{ touchAction: 'none' }}
                   className="cursor-grab active:cursor-grabbing p-1 -ml-1 rounded hover:bg-gray-50 text-gray-300 transition-colors no-print"
                   title="Hold and drag to reorder"
@@ -196,9 +196,11 @@ export default function MinimalLayout({
           {isOwn && hobbies.length === 0 && !isAddingHobby && (
             <p className="text-xs italic text-gray-300">No hobbies added yet.</p>
           )}
-          {isAddingHobby && (
-            <InlineItemForm type="hobby" onSave={handleSaveItem} onCancel={() => setAddingType(null)} />
-          )}
+          <AnimatePresence>
+            {isAddingHobby && (
+              <InlineItemForm type="hobby" onSave={handleSaveItem} onCancel={() => setAddingType(null)} />
+            )}
+          </AnimatePresence>
         </div>
       );
     }
@@ -219,7 +221,7 @@ export default function MinimalLayout({
           <div className="flex items-center gap-2">
             {isOwn && dragControls && (
               <div
-                onPointerDown={(e) => dragControls.start(e)}
+                onPointerDown={(e) => { e.preventDefault(); dragControls.start(e); }}
                 style={{ touchAction: 'none' }}
                 className="cursor-grab active:cursor-grabbing p-1 -ml-1 rounded hover:bg-gray-50 text-gray-300 transition-colors no-print"
                 title="Hold and drag to reorder"
@@ -338,18 +340,19 @@ export default function MinimalLayout({
           <p className="text-xs italic text-gray-300 mb-2">No {meta.label.toLowerCase()} added yet.</p>
         )}
 
-        {isAdding && (
-          <InlineItemForm type={type} onSave={handleSaveItem} onCancel={() => setAddingType(null)} />
-        )}
+        <AnimatePresence>
+          {isAdding && (
+            <InlineItemForm type={type} onSave={handleSaveItem} onCancel={() => setAddingType(null)} />
+          )}
+        </AnimatePresence>
       </div>
     );
   };
 
   // Build contact pieces
   const contactPieces = [];
-  if ((user?.email && isOwn) || (!isOwn && targetProfile?.email)) {
-    contactPieces.push(isOwn ? user?.email : targetProfile?.email);
-  }
+  const displayEmail = (isOwn ? (editEmail || targetProfile?.contact_email || targetProfile?.email) : (targetProfile?.contact_email || targetProfile?.email));
+  if (displayEmail) contactPieces.push(displayEmail);
   if (targetProfile?.phone) contactPieces.push(targetProfile.phone);
   if (targetProfile?.location) contactPieces.push(targetProfile.location);
 
@@ -403,22 +406,24 @@ export default function MinimalLayout({
           </div>
 
           {editingProfile ? (
-            <div className="max-w-sm mx-auto space-y-2 no-print">
-              <input className="w-full border border-gray-200 rounded-md px-3 py-1.5 text-lg text-center font-semibold text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand/30"
+            <div className="flex flex-col items-center gap-2 max-w-sm mx-auto no-print">
+              <input className="w-full bg-gray-50 border border-gray-200 rounded-md px-3 py-1.5 text-sm text-gray-900 text-center focus:outline-none focus:ring-2 focus:ring-brand/50"
                 value={editName} onChange={(e) => setEditName(e.target.value)} placeholder="Full name" autoFocus />
-              <input className="w-full border border-gray-200 rounded-md px-3 py-1.5 text-sm text-center text-gray-500 focus:outline-none focus:ring-2 focus:ring-brand/30"
+              <input className="w-full bg-gray-50 border border-gray-200 rounded-md px-3 py-1.5 text-xs text-gray-600 text-center focus:outline-none focus:ring-2 focus:ring-brand/50"
                 value={editHeadline} onChange={(e) => setEditHeadline(e.target.value)} placeholder="Job title / Headline" />
-              <input className="w-full border border-gray-200 rounded-md px-3 py-1.5 text-sm text-center text-gray-500 focus:outline-none focus:ring-2 focus:ring-brand/30"
+              <input className="w-full bg-gray-50 border border-gray-200 rounded-md px-3 py-1.5 text-xs text-gray-600 text-center focus:outline-none focus:ring-2 focus:ring-brand/50"
+                value={editEmail} onChange={(e) => setEditEmail(e.target.value)} placeholder="Email address" type="email" />
+              <input className="w-full bg-gray-50 border border-gray-200 rounded-md px-3 py-1.5 text-xs text-gray-600 text-center focus:outline-none focus:ring-2 focus:ring-brand/50"
                 value={editPhone} onChange={(e) => setEditPhone(e.target.value)} placeholder="Phone number" />
-              <input className="w-full border border-gray-200 rounded-md px-3 py-1.5 text-sm text-center text-gray-500 focus:outline-none focus:ring-2 focus:ring-brand/30"
+              <input className="w-full bg-gray-50 border border-gray-200 rounded-md px-3 py-1.5 text-xs text-gray-600 text-center focus:outline-none focus:ring-2 focus:ring-brand/50"
                 value={editLocation} onChange={(e) => setEditLocation(e.target.value)} placeholder="Address / Location" />
               <div className="flex gap-2 justify-center pt-1">
                 <button onClick={handleSaveProfile} disabled={savingProfile}
                   className="flex items-center gap-1 px-3 py-1 rounded-md bg-brand text-white text-xs font-semibold hover:bg-brand-dark disabled:opacity-50">
                   <Check className="w-3 h-3" /> Save
                 </button>
-                <button onClick={() => { setEditingProfile(false); setEditName(targetProfile?.full_name || ''); setEditHeadline(targetProfile?.headline || ''); setEditPhone(targetProfile?.phone || ''); setEditLocation(targetProfile?.location || ''); }}
-                  className="flex items-center gap-1 px-3 py-1 rounded-md border border-gray-200 text-xs text-gray-500 hover:bg-gray-50">
+                <button onClick={() => { setEditingProfile(false); setEditName(targetProfile?.full_name || ''); setEditHeadline(targetProfile?.headline || ''); setEditPhone(targetProfile?.phone || ''); setEditEmail(targetProfile?.contact_email || user?.email || targetProfile?.email || ''); setEditLocation(targetProfile?.location || ''); }}
+                  className="flex items-center gap-1 px-4 py-1.5 rounded-md border border-gray-200 text-xs text-gray-600 hover:bg-gray-50">
                   <X className="w-3 h-3" /> Cancel
                 </button>
               </div>
@@ -433,7 +438,7 @@ export default function MinimalLayout({
               </p>
               {isOwn && (
                 <button onClick={() => setEditingProfile(true)}
-                  className="absolute -top-1 -right-7 p-1 rounded-full hover:bg-gray-100 opacity-0 group-hover:opacity-100 transition-opacity no-print">
+                  className="absolute -top-1 -right-7 p-1 rounded-full hover:bg-gray-100 transition-colors no-print">
                   <Pencil className="w-3 h-3 text-gray-300" />
                 </button>
               )}

@@ -286,6 +286,9 @@ export default function ResumeUploadStep({ onResumeData, onTemplateSelect, onCon
                   <p className="text-xs text-gray-500">{parsedData.profile.headline}</p>
                 )}
                 <div className="flex flex-wrap gap-3 mt-2">
+                  {parsedData.profile.email && (
+                    <span className="text-[11px] text-gray-400">✉️ {parsedData.profile.email}</span>
+                  )}
                   {parsedData.profile.phone && (
                     <span className="text-[11px] text-gray-400">📞 {parsedData.profile.phone}</span>
                   )}

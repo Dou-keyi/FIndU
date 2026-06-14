@@ -1,7 +1,7 @@
 // ProfessionalLayout.jsx — Two-column sidebar resume layout (the original/default)
 import React from 'react';
 import { Loader2, Pencil, Check, X, Camera, Plus, Trash2 } from 'lucide-react';
-import { motion, Reorder, useDragControls } from 'framer-motion';
+import { motion, Reorder, useDragControls, AnimatePresence } from 'framer-motion';
 import {
   SECTION_META, LEFT_SECTIONS, RIGHT_SECTIONS,
   InlineItemForm, ResumeSectionHeader, ResumeItem, SidebarItem
@@ -15,7 +15,7 @@ const DraggableSection = ({ type, renderContent, isLeft }) => {
       id={type} 
       dragListener={false} 
       dragControls={dragControls} 
-      className={`relative z-0 list-none rounded-xl ${isLeft ? '' : 'bg-white'}`}
+      className={`relative z-0 list-none ${isLeft ? '' : 'bg-white rounded-xl'}`}
       initial={{ 
         scale: 1, 
         boxShadow: '0 0px 0px 0px rgba(0,0,0,0)', 
@@ -42,8 +42,8 @@ const DraggableSection = ({ type, renderContent, isLeft }) => {
         cursor: 'grabbing'
       }}
       transition={{ 
-        layout: { type: "spring", stiffness: 40, damping: 12 },
-        default: { type: "spring", stiffness: 200, damping: 20 }
+        layout: { type: "tween", duration: 0.3, ease: "easeOut" },
+        default: { type: "tween", duration: 0.3, ease: "easeOut" }
       }}
     >
       {renderContent(type, dragControls)}
@@ -61,13 +61,15 @@ export default function ProfessionalLayout({
   editSkillsInput, setEditSkillsInput,
   savingSkills, handleSaveSkills, handleDeleteSkill,
   editName, setEditName, editHeadline, setEditHeadline,
-  editPhone, setEditPhone, editLocation, setEditLocation,
+  editPhone, setEditPhone, editEmail, setEditEmail,
+  editLocation, setEditLocation,
   savingProfile, handleSaveProfile,
   avatarInputRef, uploadingAvatar, handleAvatarUpload,
   handleSaveItem, handleDeleteItem,
   initials, avatarColor, navigate,
   sectionOrder, setSectionOrder, handleSaveSectionOrder
 }) {
+  const [editingContact, setEditingContact] = React.useState(false);
 
   // Reorder logic
   const handleReorder = (newSubOrder, sectionGroup) => {
@@ -134,9 +136,11 @@ export default function ProfessionalLayout({
             <p className="text-xs italic text-gray-300 mb-2">No hobbies added yet.</p>
           )}
 
-          {isAddingHobby && (
-            <InlineItemForm type="hobby" onSave={handleSaveItem} onCancel={() => setAddingType(null)} />
-          )}
+          <AnimatePresence>
+            {isAddingHobby && (
+              <InlineItemForm type="hobby" onSave={handleSaveItem} onCancel={() => setAddingType(null)} />
+            )}
+          </AnimatePresence>
         </div>
       );
     }
@@ -155,14 +159,9 @@ export default function ProfessionalLayout({
           <div className="flex flex-row flex-wrap gap-x-8 gap-y-2">
             {items.map((item) => (
               <div key={item.id} className="flex-none w-auto max-w-full">
-                {editingItem?.id === item.id ? (
-                  <InlineItemForm type={type} initialData={item}
-                    onSave={handleSaveItem} onCancel={() => setEditingItem(null)} />
-                ) : (
-                  <ResumeItem item={item} isOwn={isOwn}
-                    onEdit={(it) => { setEditingItem(it); setAddingType(null); }}
-                    onDelete={handleDeleteItem} />
-                )}
+                <ResumeItem item={item} isOwn={isOwn}
+                  onEdit={(it) => { setEditingItem(it); setAddingType(null); }}
+                  onDelete={handleDeleteItem} />
               </div>
             ))}
           </div>
@@ -185,9 +184,11 @@ export default function ProfessionalLayout({
           </p>
         )}
 
-        {isAdding && (
-          <InlineItemForm type={type} onSave={handleSaveItem} onCancel={() => setAddingType(null)} />
-        )}
+        <AnimatePresence>
+          {isAdding && (
+            <InlineItemForm type={type} onSave={handleSaveItem} onCancel={() => setAddingType(null)} />
+          )}
+        </AnimatePresence>
       </div>
     );
   };
@@ -201,14 +202,14 @@ export default function ProfessionalLayout({
           <div className="resume-section-header resume-section-header--dark flex items-center justify-between">
             <div className="flex items-center gap-2">
               {isOwn && dragControls && (
-                <div onPointerDown={(e) => dragControls.start(e)} style={{ touchAction: 'none' }} className="cursor-grab active:cursor-grabbing p-1 -ml-1 rounded hover:bg-white/10 text-white/40 transition-colors no-print" title="Hold and drag to reorder">
+                <div onPointerDown={(e) => { e.preventDefault(); dragControls.start(e); }} style={{ touchAction: 'none' }} className="cursor-grab active:cursor-grabbing p-1 -ml-1 rounded hover:bg-white/10 text-white/40 transition-colors no-print" title="Hold and drag to reorder">
                   <svg className="w-4 h-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="12" r="1"/><circle cx="9" cy="5" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="19" r="1"/></svg>
                 </div>
               )}
               <h3 className="text-sm font-extrabold uppercase tracking-widest text-white">Skills</h3>
             </div>
             {isOwn && (
-              <button onClick={() => { setEditingSkills(true); setEditSkillsInput(''); }} className="p-1 rounded-full hover:bg-white/10 text-white/40 hover:text-white transition-colors opacity-0 group-hover:opacity-100 no-print">
+              <button onClick={() => { setEditingSkills(true); setEditSkillsInput(''); }} className="p-1 rounded-full hover:bg-white/10 text-white/40 hover:text-white transition-colors no-print">
                 <Plus className="w-3.5 h-3.5" />
               </button>
             )}
@@ -278,9 +279,11 @@ export default function ProfessionalLayout({
           </p>
         )}
 
-        {isAdding && (
-          <InlineItemForm type={type} onSave={handleSaveItem} onCancel={() => setAddingType(null)} />
-        )}
+        <AnimatePresence>
+          {isAdding && (
+            <InlineItemForm type={type} onSave={handleSaveItem} onCancel={() => setAddingType(null)} />
+          )}
+        </AnimatePresence>
       </div>
     );
   };
@@ -349,16 +352,12 @@ export default function ProfessionalLayout({
                 value={editName} onChange={(e) => setEditName(e.target.value)} placeholder="Full name" autoFocus />
               <input className="w-full bg-white/10 border border-white/20 rounded-md px-3 py-1.5 text-xs text-white/70 text-center focus:outline-none focus:ring-2 focus:ring-brand/50"
                 value={editHeadline} onChange={(e) => setEditHeadline(e.target.value)} placeholder="Job title / Headline" />
-              <input className="w-full bg-white/10 border border-white/20 rounded-md px-3 py-1.5 text-xs text-white/70 text-center focus:outline-none focus:ring-2 focus:ring-brand/50"
-                value={editPhone} onChange={(e) => setEditPhone(e.target.value)} placeholder="Phone number" />
-              <input className="w-full bg-white/10 border border-white/20 rounded-md px-3 py-1.5 text-xs text-white/70 text-center focus:outline-none focus:ring-2 focus:ring-brand/50"
-                value={editLocation} onChange={(e) => setEditLocation(e.target.value)} placeholder="Address / Location" />
               <div className="flex gap-2 justify-center pt-1">
                 <button onClick={handleSaveProfile} disabled={savingProfile}
                   className="flex items-center gap-1 px-3 py-1 rounded-md bg-brand text-white text-xs font-semibold hover:bg-brand-dark disabled:opacity-50">
                   <Check className="w-3 h-3" /> Save
                 </button>
-                <button onClick={() => { setEditingProfile(false); setEditName(targetProfile?.full_name || ''); setEditHeadline(targetProfile?.headline || ''); setEditPhone(targetProfile?.phone || ''); setEditLocation(targetProfile?.location || ''); }}
+                <button onClick={() => { setEditingProfile(false); setEditName(targetProfile?.full_name || ''); setEditHeadline(targetProfile?.headline || ''); setEditPhone(targetProfile?.phone || ''); setEditEmail(targetProfile?.contact_email || user?.email || targetProfile?.email || ''); setEditLocation(targetProfile?.location || ''); }}
                   className="flex items-center gap-1 px-3 py-1 rounded-md border border-white/20 text-xs text-white/60 hover:bg-white/10">
                   <X className="w-3 h-3" /> Cancel
                 </button>
@@ -370,7 +369,7 @@ export default function ProfessionalLayout({
               <p className="text-sm text-white/50 mt-1 font-medium">{targetProfile?.headline || 'Candidate'}</p>
               {isOwn && (
                 <button onClick={() => setEditingProfile(true)}
-                  className="absolute -top-1 -right-6 p-1 rounded-full hover:bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity no-print">
+                  className="absolute -top-1 -right-6 p-1 rounded-full hover:bg-white/10 transition-colors no-print">
                   <Pencil className="w-3 h-3 text-white/40" />
                 </button>
               )}
@@ -379,28 +378,59 @@ export default function ProfessionalLayout({
         </div>
 
         {/* ── Contact ── */}
-        <div className="mb-6">
-          <div className="resume-section-header resume-section-header--dark">
+        <div className="mb-6 group/contact">
+          <div className="resume-section-header resume-section-header--dark flex items-center justify-between">
             <h3 className="text-sm font-extrabold uppercase tracking-widest text-white">Contact</h3>
+            {isOwn && !editingContact && (
+              <button onClick={() => setEditingContact(true)} className="transition-colors p-1 -mr-1 rounded hover:bg-white/10 no-print" title="Edit Contact Info">
+                <Plus className="w-3.5 h-3.5 text-white/40" />
+              </button>
+            )}
           </div>
           <div className="space-y-3">
-            {(user?.email && isOwn) || (!isOwn && targetProfile?.email) ? (
-              <div>
-                <p className="resume-contact-label">Email</p>
-                <p className="resume-contact-value">{isOwn ? user?.email : targetProfile?.email}</p>
+            {editingContact ? (
+              <div className="space-y-2 no-print">
+                <input className="w-full bg-white/10 border border-white/20 rounded-md px-3 py-1.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-brand/50"
+                  value={editEmail} onChange={(e) => setEditEmail(e.target.value)} placeholder="Email address" type="email" />
+                <input className="w-full bg-white/10 border border-white/20 rounded-md px-3 py-1.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-brand/50"
+                  value={editPhone} onChange={(e) => setEditPhone(e.target.value)} placeholder="Phone number" />
+                <input className="w-full bg-white/10 border border-white/20 rounded-md px-3 py-1.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-brand/50"
+                  value={editLocation} onChange={(e) => setEditLocation(e.target.value)} placeholder="Address / Location" />
+                <div className="flex gap-2 pt-1">
+                  <button onClick={() => { handleSaveProfile().then(() => setEditingContact(false)); }} disabled={savingProfile}
+                    className="flex items-center gap-1 px-3 py-1 rounded-md bg-brand text-white text-xs font-semibold hover:bg-brand-dark disabled:opacity-50">
+                    <Check className="w-3 h-3" /> Save
+                  </button>
+                  <button onClick={() => { setEditingContact(false); setEditPhone(targetProfile?.phone || ''); setEditEmail(targetProfile?.contact_email || user?.email || targetProfile?.email || ''); setEditLocation(targetProfile?.location || ''); }}
+                    className="flex items-center gap-1 px-3 py-1 rounded-md border border-white/20 text-xs text-white/60 hover:bg-white/10">
+                    <X className="w-3 h-3" /> Cancel
+                  </button>
+                </div>
               </div>
-            ) : null}
-            {targetProfile?.phone && (
-              <div>
-                <p className="resume-contact-label">Phone</p>
-                <p className="resume-contact-value">{targetProfile.phone}</p>
-              </div>
-            )}
-            {targetProfile?.location && (
-              <div>
-                <p className="resume-contact-label">Address</p>
-                <p className="resume-contact-value">{targetProfile.location}</p>
-              </div>
+            ) : (
+              <>
+                {((isOwn && (editEmail || user?.email)) || (!isOwn && (targetProfile?.contact_email || targetProfile?.email))) ? (
+                  <div>
+                    <p className="resume-contact-label">Email</p>
+                    <p className="resume-contact-value">{isOwn ? (editEmail || user?.email) : (targetProfile?.contact_email || targetProfile?.email)}</p>
+                  </div>
+                ) : null}
+                {targetProfile?.phone && (
+                  <div>
+                    <p className="resume-contact-label">Phone</p>
+                    <p className="resume-contact-value">{targetProfile.phone}</p>
+                  </div>
+                )}
+                {targetProfile?.location && (
+                  <div>
+                    <p className="resume-contact-label">Address</p>
+                    <p className="resume-contact-value">{targetProfile.location}</p>
+                  </div>
+                )}
+                {isOwn && !editEmail && !targetProfile?.phone && !targetProfile?.location && (
+                  <p className="text-xs italic text-white/25">No contact info added.</p>
+                )}
+              </>
             )}
           </div>
         </div>
@@ -421,7 +451,7 @@ export default function ProfessionalLayout({
         {/* ── Left-side sections: Languages, Certifications ── */}
         <Reorder.Group axis="y" values={orderedLeftSections} onReorder={(newOrder) => handleReorder(newOrder, LEFT_SECTIONS)} className="flex flex-col m-0 p-0">
           {orderedLeftSections.map((type) => (
-            <DraggableSection key={type} type={type} renderContent={renderLeftSection} isLeft />
+            <DraggableSection key={type} type={type} renderContent={renderLeftSection} isLeft isActive={addingType === type || editingItem?.item_type === type} />
           ))}
         </Reorder.Group>
 
@@ -452,7 +482,7 @@ export default function ProfessionalLayout({
         {/* Right-side sections */}
         <Reorder.Group axis="y" values={orderedRightSections} onReorder={(newOrder) => handleReorder(newOrder, RIGHT_SECTIONS)} className="m-0 p-0 flex flex-col">
           {orderedRightSections.map((type) => (
-            <DraggableSection key={type} type={type} renderContent={renderRightSection} isLeft={false} />
+            <DraggableSection key={type} type={type} renderContent={renderRightSection} isLeft={false} isActive={addingType === type || editingItem?.item_type === type} />
           ))}
         </Reorder.Group>
 

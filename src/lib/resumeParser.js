@@ -67,7 +67,7 @@ IMPORTANT RULES:
 4. For "language" items, put the proficiency level (e.g. "Fluent", "Native", "Intermediate") in the description.
 5. For "hobby" items, just set title — no description needed.
 6. Extract skills as a flat array of skill names.
-7. Extract profile info (name, headline/job title, phone, location/address) if present.
+7. Extract profile info (name, headline/job title, phone, email, location/address) if present.
 
 Respond ONLY with valid JSON in this exact shape — no markdown, no preamble:
 {
@@ -75,6 +75,7 @@ Respond ONLY with valid JSON in this exact shape — no markdown, no preamble:
     "full_name": "string or null",
     "headline": "string or null",
     "phone": "string or null",
+    "email": "string or null",
     "location": "string or null"
   },
   "skills": ["skill1", "skill2"],

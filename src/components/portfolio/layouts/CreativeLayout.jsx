@@ -4,7 +4,7 @@ import {
   Loader2, Pencil, Trash2, Check, X, Camera, Plus, Sparkles,
   Mail, Phone, MapPin
 } from 'lucide-react';
-import { motion, Reorder, useDragControls } from 'framer-motion';
+import { motion, Reorder, useDragControls, AnimatePresence } from 'framer-motion';
 import {
   SECTION_META, ALL_SECTIONS,
   InlineItemForm, ResumeSectionHeader, ResumeItem
@@ -29,8 +29,8 @@ const DraggableSection = ({ type, renderContent }) => {
         cursor: 'grabbing'
       }}
       transition={{ 
-        layout: { type: "spring", stiffness: 40, damping: 12 },
-        default: { type: "spring", stiffness: 200, damping: 20 }
+        layout: { type: "tween", duration: 0.3, ease: "easeOut" },
+        default: { type: "tween", duration: 0.3, ease: "easeOut" }
       }}
     >
       {renderContent(type, dragControls)}
@@ -48,7 +48,7 @@ export default function CreativeLayout({
   editSkillsInput, setEditSkillsInput,
   savingSkills, handleSaveSkills, handleDeleteSkill,
   editName, setEditName, editHeadline, setEditHeadline,
-  editPhone, setEditPhone, editLocation, setEditLocation,
+  editPhone, setEditPhone, editEmail, setEditEmail, editLocation, setEditLocation,
   savingProfile, handleSaveProfile,
   avatarInputRef, uploadingAvatar, handleAvatarUpload,
   handleSaveItem, handleDeleteItem,
@@ -84,7 +84,7 @@ export default function CreativeLayout({
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2.5">
               {isOwn && dragControls && (
-                <div onPointerDown={(e) => dragControls.start(e)} style={{ touchAction: 'none' }} className="cursor-grab active:cursor-grabbing p-1 -ml-1 rounded hover:bg-gray-100 text-gray-300 transition-colors no-print" title="Hold and drag to reorder">
+                <div onPointerDown={(e) => { e.preventDefault(); dragControls.start(e); }} style={{ touchAction: 'none' }} className="cursor-grab active:cursor-grabbing p-1 -ml-1 rounded hover:bg-gray-100 text-gray-300 transition-colors no-print" title="Hold and drag to reorder">
                   <svg className="w-4 h-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="12" r="1"/><circle cx="9" cy="5" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="19" r="1"/></svg>
                 </div>
               )}
@@ -95,7 +95,7 @@ export default function CreativeLayout({
             </div>
             {isOwn && (
               <button onClick={() => { setEditingSkills(true); setEditSkillsInput(''); }}
-                className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors opacity-0 group-hover:opacity-100 no-print">
+                className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors no-print">
                 <Plus className="w-3.5 h-3.5 text-gray-400" />
               </button>
             )}
@@ -153,7 +153,7 @@ export default function CreativeLayout({
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2.5">
               {isOwn && dragControls && (
-                <div onPointerDown={(e) => dragControls.start(e)} style={{ touchAction: 'none' }} className="cursor-grab active:cursor-grabbing p-1 -ml-1 rounded hover:bg-gray-100 text-gray-300 transition-colors no-print" title="Hold and drag to reorder">
+                <div onPointerDown={(e) => { e.preventDefault(); dragControls.start(e); }} style={{ touchAction: 'none' }} className="cursor-grab active:cursor-grabbing p-1 -ml-1 rounded hover:bg-gray-100 text-gray-300 transition-colors no-print" title="Hold and drag to reorder">
                   <svg className="w-4 h-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="12" r="1"/><circle cx="9" cy="5" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="19" r="1"/></svg>
                 </div>
               )}
@@ -194,9 +194,11 @@ export default function CreativeLayout({
           {isOwn && hobbies.length === 0 && !isAddingHobby && (
             <p className="text-xs italic text-gray-300">No hobbies added yet.</p>
           )}
-          {isAddingHobby && (
-            <InlineItemForm type="hobby" onSave={handleSaveItem} onCancel={() => setAddingType(null)} />
-          )}
+          <AnimatePresence>
+            {isAddingHobby && (
+              <InlineItemForm type="hobby" onSave={handleSaveItem} onCancel={() => setAddingType(null)} />
+            )}
+          </AnimatePresence>
         </div>
       );
     }
@@ -216,7 +218,7 @@ export default function CreativeLayout({
           <div className="flex items-center gap-2.5">
             {isOwn && dragControls && (
               <div
-                onPointerDown={(e) => dragControls.start(e)}
+                onPointerDown={(e) => { e.preventDefault(); dragControls.start(e); }}
                 style={{ touchAction: 'none' }}
                 className="cursor-grab active:cursor-grabbing p-1 -ml-1 rounded hover:bg-gray-100 text-gray-400 transition-colors no-print"
                 title="Hold and drag to reorder"
@@ -296,9 +298,11 @@ export default function CreativeLayout({
           <p className="text-xs italic text-gray-300">No {meta.label.toLowerCase()} added yet.</p>
         )}
 
-        {isAdding && (
-          <InlineItemForm type={type} onSave={handleSaveItem} onCancel={() => setAddingType(null)} />
-        )}
+        <AnimatePresence>
+          {isAdding && (
+            <InlineItemForm type={type} onSave={handleSaveItem} onCancel={() => setAddingType(null)} />
+          )}
+        </AnimatePresence>
       </div>
     );
   };
@@ -355,21 +359,23 @@ export default function CreativeLayout({
           {/* Name, headline, contact */}
           <div className="flex-1 min-w-0">
             {editingProfile ? (
-              <div className="space-y-2 no-print">
+              <div className="space-y-2 mt-4 no-print max-w-sm">
                 <input className="w-full bg-white/10 border border-white/20 rounded-md px-3 py-1.5 text-lg text-white font-bold focus:outline-none focus:ring-2 focus:ring-white/30"
                   value={editName} onChange={(e) => setEditName(e.target.value)} placeholder="Full name" autoFocus />
                 <input className="w-full bg-white/10 border border-white/20 rounded-md px-3 py-1.5 text-sm text-white/70 focus:outline-none focus:ring-2 focus:ring-white/30"
                   value={editHeadline} onChange={(e) => setEditHeadline(e.target.value)} placeholder="Job title / Headline" />
-                <input className="w-full bg-white/10 border border-white/20 rounded-md px-3 py-1.5 text-sm text-white/70 focus:outline-none focus:ring-2 focus:ring-white/30"
+                <input className="w-full bg-white/10 border border-white/20 rounded-md px-3 py-1.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-white/50"
                   value={editPhone} onChange={(e) => setEditPhone(e.target.value)} placeholder="Phone number" />
-                <input className="w-full bg-white/10 border border-white/20 rounded-md px-3 py-1.5 text-sm text-white/70 focus:outline-none focus:ring-2 focus:ring-white/30"
+                <input className="w-full bg-white/10 border border-white/20 rounded-md px-3 py-1.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-white/50"
+                  value={editEmail} onChange={(e) => setEditEmail(e.target.value)} placeholder="Email address" type="email" />
+                <input className="w-full bg-white/10 border border-white/20 rounded-md px-3 py-1.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-white/50"
                   value={editLocation} onChange={(e) => setEditLocation(e.target.value)} placeholder="Address / Location" />
                 <div className="flex gap-2 pt-1">
                   <button onClick={handleSaveProfile} disabled={savingProfile}
-                    className="flex items-center gap-1 px-3 py-1 rounded-md bg-white/20 text-white text-xs font-semibold hover:bg-white/30 disabled:opacity-50">
+                    className="flex items-center gap-1 px-3 py-1 rounded-md bg-white text-gray-900 text-xs font-semibold hover:bg-gray-100 disabled:opacity-50">
                     <Check className="w-3 h-3" /> Save
                   </button>
-                  <button onClick={() => { setEditingProfile(false); setEditName(targetProfile?.full_name || ''); setEditHeadline(targetProfile?.headline || ''); setEditPhone(targetProfile?.phone || ''); setEditLocation(targetProfile?.location || ''); }}
+                  <button onClick={() => { setEditingProfile(false); setEditName(targetProfile?.full_name || ''); setEditHeadline(targetProfile?.headline || ''); setEditPhone(targetProfile?.phone || ''); setEditEmail(targetProfile?.contact_email || user?.email || targetProfile?.email || ''); setEditLocation(targetProfile?.location || ''); }}
                     className="flex items-center gap-1 px-3 py-1 rounded-md border border-white/20 text-xs text-white/60 hover:bg-white/10">
                     <X className="w-3 h-3" /> Cancel
                   </button>
@@ -386,10 +392,10 @@ export default function CreativeLayout({
 
                 {/* Contact info inline */}
                 <div className="flex flex-wrap items-center gap-4 mt-3">
-                  {((user?.email && isOwn) || (!isOwn && targetProfile?.email)) && (
-                    <span className="flex items-center gap-1.5 text-xs text-white/50">
-                      <Mail className="w-3 h-3" /> {isOwn ? user?.email : targetProfile?.email}
-                    </span>
+                  {((isOwn && editEmail) || (!isOwn && (targetProfile?.contact_email || targetProfile?.email))) && (
+                    <div className="flex items-center gap-1.5 text-xs text-white/50">
+                      <Mail className="w-3 h-3" /> {isOwn ? (editEmail || user?.email) : (targetProfile?.contact_email || targetProfile?.email)}
+                    </div>
                   )}
                   {targetProfile?.phone && (
                     <span className="flex items-center gap-1.5 text-xs text-white/50">
@@ -416,7 +422,7 @@ export default function CreativeLayout({
 
                 {isOwn && (
                   <button onClick={() => setEditingProfile(true)}
-                    className="absolute top-0 -right-2 p-1 rounded-full hover:bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity no-print">
+                    className="absolute top-0 -right-2 p-1 rounded-full hover:bg-white/10 transition-colors no-print">
                     <Pencil className="w-3.5 h-3.5 text-white/40" />
                   </button>
                 )}

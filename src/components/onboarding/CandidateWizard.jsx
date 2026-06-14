@@ -122,6 +122,7 @@ export default function CandidateWizard() {
       if (resumePath === 'upload' && resumeData?.profile) {
         if (resumeData.profile.full_name) profileUpdates.full_name = resumeData.profile.full_name;
         if (resumeData.profile.phone) profileUpdates.phone = resumeData.profile.phone;
+        if (resumeData.profile.email) profileUpdates.contact_email = resumeData.profile.email;
       }
 
       // Store template preference if chosen

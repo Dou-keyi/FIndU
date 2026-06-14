@@ -3,8 +3,9 @@ import { useState } from 'react';
 import {
   Plus, Loader2, Pencil, Trash2, X, Sparkles, GripHorizontal,
   GraduationCap, Briefcase, Award, ShieldCheck, Languages,
-  Heart, User, FileText, Users, Phone, Mail
+  Heart, User, FileText, Users, Phone, Mail, ExternalLink
 } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 /* ─── Section configuration ─── */
 export const SECTION_META = {
@@ -30,9 +31,11 @@ export const ALL_SECTIONS = ['summary', 'education', 'experience', 'project', 'a
 /* ─── Inline edit form (compact, for adding/editing items) ─── */
 export function InlineItemForm({ type, initialData, onSave, onCancel }) {
   const isRef = type === 'reference';
+  const isProject = type === 'project';
   
   const [title, setTitle]       = useState(initialData?.title || '');
   const [description, setDesc]  = useState(initialData?.description || '');
+  const [url, setUrl]           = useState(initialData?.url || '');
   
   const descLines = (initialData?.description || '').split('\n');
   const initialPos = isRef ? (descLines.find(l => l.startsWith('Position: '))?.replace('Position: ', '') || (!descLines[0]?.startsWith('Phone: ') && !descLines[0]?.startsWith('Email: ') ? descLines[0] : '')) : '';
@@ -89,6 +92,7 @@ export function InlineItemForm({ type, initialData, onSave, onCancel }) {
         item_type: type,
         title: title.trim(),
         description: finalDesc,
+        url: isProject && url.trim() ? url.trim() : null,
         tags: isRef ? [] : tags,
         ...(initialData?.id ? { id: initialData.id } : {}),
       });
@@ -96,7 +100,14 @@ export function InlineItemForm({ type, initialData, onSave, onCancel }) {
   };
 
   return (
-    <div className="bg-gray-50 rounded-lg border border-gray-200 p-3 space-y-2 mt-2 no-print">
+    <motion.div
+      initial={{ height: initialData ? 'auto' : 0, opacity: 0 }}
+      animate={{ height: 'auto', opacity: 1 }}
+      exit={{ height: 0, opacity: 0 }}
+      transition={{ duration: 0.3, ease: 'easeOut' }}
+      className="overflow-hidden"
+    >
+      <div className="bg-gray-50 rounded-lg p-3 space-y-2 mt-2 border border-gray-200 no-print">
       <input
         className="w-full px-3 py-1.5 rounded-md border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
         placeholder={l.title}
@@ -108,47 +119,52 @@ export function InlineItemForm({ type, initialData, onSave, onCancel }) {
         <div className="space-y-2">
           <input
             className="w-full px-3 py-1.5 rounded-md border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
-            placeholder="Position (e.g. Former Manager at Tech Corp)"
+            placeholder="Position (Optional)"
             value={refPosition}
             onChange={(e) => setRefPosition(e.target.value)}
           />
           <div className="flex gap-2">
             <input
-              className="flex-1 px-3 py-1.5 rounded-md border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
-              placeholder="Phone number"
+              className="w-1/2 px-3 py-1.5 rounded-md border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
+              placeholder="Phone (Optional)"
               value={refPhone}
               onChange={(e) => setRefPhone(e.target.value)}
             />
             <input
-              className="flex-1 px-3 py-1.5 rounded-md border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
-              placeholder="Email address"
-              type="email"
+              className="w-1/2 px-3 py-1.5 rounded-md border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
+              placeholder="Email (Optional)"
               value={refEmail}
               onChange={(e) => setRefEmail(e.target.value)}
             />
           </div>
         </div>
-      ) : l.desc && (
+      ) : (
         <textarea
-          className="w-full px-3 py-1.5 rounded-md border border-gray-200 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
+          className="w-full px-3 py-1.5 rounded-md border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand min-h-[60px] resize-y"
           placeholder={l.desc}
-          rows={2}
           value={description}
           onChange={(e) => setDesc(e.target.value)}
+        />
+      )}
+      {isProject && (
+        <input
+          className="w-full px-3 py-1.5 rounded-md border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
+          placeholder="Project URL (Optional)"
+          value={url}
+          onChange={(e) => setUrl(e.target.value)}
         />
       )}
       {l.showTags && (
         <div>
           <div className="flex flex-wrap gap-1 mb-1">
             {tags.map((t) => (
-              <span key={t} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-brand-50 text-brand border border-brand-200">
-                {t}
-                <button onClick={() => setTags(tags.filter((x) => x !== t))} className="hover:text-red-500"><X className="w-2.5 h-2.5" /></button>
+              <span key={t} className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-white border border-gray-200 text-[11px] text-gray-600">
+                {t} <X className="w-3 h-3 cursor-pointer hover:text-red-500" onClick={() => setTags(tags.filter((x) => x !== t))} />
               </span>
             ))}
           </div>
           <input
-            className="w-full px-3 py-1.5 rounded-md border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
+            className="w-full px-3 py-1.5 rounded-md border border-gray-200 text-xs focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
             placeholder={l.tagHint || 'Press Enter to add tags'}
             value={tagInput}
             onChange={(e) => setTagInput(e.target.value)}
@@ -167,7 +183,8 @@ export function InlineItemForm({ type, initialData, onSave, onCancel }) {
           Cancel
         </button>
       </div>
-    </div>
+      </div>
+    </motion.div>
   );
 }
 
@@ -183,7 +200,7 @@ export function ResumeSectionHeader({ type, isOwn, onAdd, dark = false, accentCo
         <div className="flex items-center gap-2">
           {isOwn && dragControls && (
             <div
-              onPointerDown={(e) => dragControls.start(e)}
+              onPointerDown={(e) => { e.preventDefault(); dragControls.start(e); }}
               style={{ touchAction: 'none' }}
               className={`cursor-grab active:cursor-grabbing p-1 -ml-1 rounded transition-colors no-print ${dark ? 'hover:bg-white/10 text-white/40' : 'hover:bg-gray-100 text-gray-400'}`}
               title="Hold and drag to reorder"
@@ -214,7 +231,14 @@ export function ResumeItem({ item, isOwn, onEdit, onDelete }) {
       <div className="flex items-start justify-between">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <h4 className="text-sm font-bold text-gray-900">{item.title}</h4>
+            <h4 className="text-sm font-bold text-gray-900 flex items-center gap-2">
+              {item.title}
+              {item.item_type === 'project' && item.url && (
+                <a href={item.url.startsWith('http') ? item.url : `https://${item.url}`} target="_blank" rel="noopener noreferrer" className="text-brand hover:text-brand-dark transition-colors inline-flex no-print" title="View Project">
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </a>
+              )}
+            </h4>
             {isAI && (
               <span className="inline-flex items-center gap-0.5 text-[10px] italic text-gray-400">
                 <Sparkles className="w-3 h-3 text-amber-400" /> AI

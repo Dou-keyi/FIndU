@@ -4,6 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
   Loader2, Trash2, Download, Upload, Palette, Sparkles, CheckCircle2, X
 } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { useAuth } from '../hooks/useAuth';
 import { usePortfolioSuggestion } from '../context/PortfolioSuggestionContext';
 import { supabase } from '../lib/supabase';
@@ -64,6 +65,7 @@ export default function PortfolioPage() {
   const [editName, setEditName] = useState('');
   const [editHeadline, setEditHeadline] = useState('');
   const [editPhone, setEditPhone] = useState('');
+  const [editEmail, setEditEmail] = useState('');
   const [editLocation, setEditLocation] = useState('');
   const [savingProfile, setSavingProfile] = useState(false);
 
@@ -135,6 +137,7 @@ export default function PortfolioPage() {
       setEditName(targetProfile.full_name || '');
       setEditHeadline(targetProfile.headline || '');
       setEditPhone(targetProfile.phone || '');
+      setEditEmail(targetProfile.contact_email || user?.email || targetProfile.email || '');
       setEditLocation(targetProfile.location || '');
       setEditSkillsInput(''); // Clear input when profile loads
       setCustomHex(targetProfile.resume_accent_color || '');
@@ -209,10 +212,10 @@ export default function PortfolioPage() {
     setSavingProfile(true);
     try {
       const { error } = await supabase.from('profiles')
-        .update({ full_name: editName.trim(), headline: editHeadline.trim(), phone: editPhone.trim(), location: editLocation.trim() })
+        .update({ full_name: editName.trim(), headline: editHeadline.trim(), phone: editPhone.trim(), contact_email: editEmail.trim(), location: editLocation.trim() })
         .eq('id', targetProfile.id);
       if (!error) {
-        setTargetProfile((p) => ({ ...p, full_name: editName.trim(), headline: editHeadline.trim(), phone: editPhone.trim(), location: editLocation.trim() }));
+        setTargetProfile((p) => ({ ...p, full_name: editName.trim(), headline: editHeadline.trim(), phone: editPhone.trim(), contact_email: editEmail.trim(), location: editLocation.trim() }));
         setEditingProfile(false);
       }
     } catch (err) { console.error('Profile update failed:', err); }
@@ -623,7 +626,8 @@ export default function PortfolioPage() {
                 editSkillsInput, setEditSkillsInput,
                 savingSkills, handleSaveSkills, handleDeleteSkill,
                 editName, setEditName, editHeadline, setEditHeadline,
-                editPhone, setEditPhone, editLocation, setEditLocation,
+                editPhone, setEditPhone, editEmail, setEditEmail,
+                editLocation, setEditLocation,
                 savingProfile, handleSaveProfile,
                 avatarInputRef, uploadingAvatar, handleAvatarUpload,
                 handleSaveItem, handleDeleteItem,
