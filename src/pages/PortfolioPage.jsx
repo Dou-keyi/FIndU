@@ -3,7 +3,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Loader2, Trash2, Download, Upload, Palette, Sparkles, CheckCircle2,
-  X, Check, MessageSquare, X
+  X, Check, MessageSquare
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { usePortfolioSuggestion } from '../context/PortfolioSuggestionContext';
