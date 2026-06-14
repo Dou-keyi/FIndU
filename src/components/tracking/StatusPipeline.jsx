@@ -3,19 +3,25 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { ArrowRight } from 'lucide-react';
 
-const STAGES = ['applied', 'viewed', 'shortlisted', 'rejected'];
+const DEFAULT_STAGES = ['applied', 'viewed', 'shortlisted', 'rejected'];
 
-const STAGE_LABELS = {
+const DEFAULT_LABELS = {
   applied: 'Applied',
   viewed: 'Viewed',
   shortlisted: 'Shortlisted',
   rejected: 'Rejected',
 };
 
-export default function StatusPipeline({ counts, activeStatus, onSelectStatus }) {
+export default function StatusPipeline({ 
+  counts, 
+  activeStatus, 
+  onSelectStatus,
+  stages = DEFAULT_STAGES,
+  stageLabels = DEFAULT_LABELS
+}) {
   return (
     <div className="flex items-center justify-between w-full overflow-x-auto hide-scrollbar pb-2 pt-1 -mx-4 px-4 sm:mx-0 sm:px-0">
-      {STAGES.map((stage, i) => {
+      {stages.map((stage, i) => {
         const isActive = activeStatus === stage;
         const count = counts[stage] || 0;
         const isSelectedOrAll = !activeStatus || isActive;
@@ -45,7 +51,7 @@ export default function StatusPipeline({ counts, activeStatus, onSelectStatus })
                   isActive ? 'text-brand-700' : 'text-slate-500'
                 }`}
               >
-                {STAGE_LABELS[stage]}
+                {stageLabels[stage] || stage}
               </span>
 
               {/* Active indicator dot */}
@@ -59,7 +65,7 @@ export default function StatusPipeline({ counts, activeStatus, onSelectStatus })
             </button>
 
             {/* Arrow between stages */}
-            {i < STAGES.length - 1 && (
+            {i < stages.length - 1 && (
               <div className="flex-shrink-0 px-1 sm:px-2 flex items-center justify-center opacity-40">
                 <ArrowRight className="w-4 h-4 text-slate-400" />
               </div>

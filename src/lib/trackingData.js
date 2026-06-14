@@ -21,17 +21,28 @@ export async function getCandidateApplications(userId) {
   return data || [];
 }
 
-export async function getEmployerJobIds(userId) {
+export async function getEmployerJobs(userId) {
   const { data, error } = await supabase
     .from('jobs')
-    .select('id')
-    .eq('posted_by', userId);
+    .select('id, title, created_at, status, location, work_type, applications(id)')
+    .eq('posted_by', userId)
+    .order('created_at', { ascending: false });
 
   if (error) {
     console.error('Failed to fetch employer jobs:', error);
     return [];
   }
-  return (data || []).map((j) => j.id);
+  
+  return (data || []).map(job => ({
+    ...job,
+    applicationCount: job.applications?.length || 0,
+    applications: undefined // don't need the array of ids
+  }));
+}
+
+export async function getEmployerJobIds(userId) {
+  const jobs = await getEmployerJobs(userId);
+  return jobs.map(j => j.id);
 }
 
 export async function getEmployerApplications(jobIds) {

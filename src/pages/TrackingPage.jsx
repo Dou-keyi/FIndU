@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { 
   getCandidateApplications, 
-  getEmployerJobIds, 
+  getEmployerJobs,
   getEmployerApplications, 
   updateApplicationStatus,
   getSavedJobs,
@@ -17,6 +17,9 @@ import StatusPipeline from '../components/tracking/StatusPipeline';
 import ApplicationCard from '../components/tracking/ApplicationCard';
 import SavedJobCard from '../components/tracking/SavedJobCard';
 import ApplyConfirmSheet from '../components/swipe/ApplyConfirmSheet';
+import EmployerPipelineView from '../components/tracking/EmployerPipelineView';
+import { formatRelativeTime } from '../lib/relativeTime';
+import { ChevronLeft } from 'lucide-react';
 
 export default function TrackingPage() {
   const { user, profile } = useAuth();
@@ -31,6 +34,10 @@ export default function TrackingPage() {
   const [loading, setLoading] = useState(true);
   const [removingIds, setRemovingIds] = useState(new Set());
   
+  // Employer state
+  const [employerJobs, setEmployerJobs] = useState([]);
+  const [activeJobId, setActiveJobId] = useState(null);
+  
   // Sheet state for applying from saved jobs
   const [applyConfirmNode, setApplyConfirmNode] = useState(null);
 
@@ -39,10 +46,14 @@ export default function TrackingPage() {
     setLoading(true);
 
     if (isEmployer) {
-      const jobIds = await getEmployerJobIds(user.id);
-      if (jobIds.length > 0) {
-        const apps = await getEmployerApplications(jobIds);
+      const jobs = await getEmployerJobs(user.id);
+      setEmployerJobs(jobs);
+      
+      if (activeJobId) {
+        const apps = await getEmployerApplications([activeJobId]);
         setApplications(apps);
+      } else {
+        setApplications([]);
       }
     } else {
       const apps = await getCandidateApplications(user.id);
@@ -57,7 +68,7 @@ export default function TrackingPage() {
 
   useEffect(() => {
     loadData();
-  }, [user, isEmployer]);
+  }, [user, isEmployer, activeJobId]);
 
   // Calculate pipeline counts
   const pipelineCounts = applications.reduce((acc, app) => {
@@ -145,7 +156,17 @@ export default function TrackingPage() {
     <div className="flex flex-col h-[100dvh] bg-slate-50 relative overflow-hidden">
       {/* Header */}
       <div className="bg-white border-b border-slate-200 px-4 pt-12 md:pt-6 pb-4 flex-shrink-0 z-10 sticky top-0">
-        <h1 className="text-xl font-bold text-slate-900 mb-4 px-2">Tracker</h1>
+        <div className="flex items-center mb-4 px-2">
+          {isEmployer && activeJobId && (
+            <button 
+              onClick={() => setActiveJobId(null)}
+              className="mr-3 p-1.5 -ml-1.5 hover:bg-slate-100 rounded-lg transition-colors"
+            >
+              <ChevronLeft className="w-5 h-5 text-slate-500" />
+            </button>
+          )}
+          <h1 className="text-xl font-bold text-slate-900">Tracker</h1>
+        </div>
         
         {/* Tabs (only for candidates) */}
         {!isEmployer && (
@@ -176,33 +197,97 @@ export default function TrackingPage() {
           </div>
         )}
 
-        {/* Pipeline (Applications tab only) */}
-        <AnimatePresence mode="popLayout">
-          {activeTab === 'applications' && !loading && applications.length > 0 && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              className="mt-4 overflow-hidden"
-            >
-              <StatusPipeline 
-                counts={pipelineCounts} 
-                activeStatus={activeStatus} 
-                onSelectStatus={setActiveStatus} 
-              />
-            </motion.div>
-          )}
-        </AnimatePresence>
+        {/* Pipeline (Applications tab only, for candidates) */}
+        {!isEmployer && (
+          <AnimatePresence mode="popLayout">
+            {activeTab === 'applications' && !loading && applications.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                className="mt-4 overflow-hidden"
+              >
+                <StatusPipeline 
+                  counts={pipelineCounts} 
+                  activeStatus={activeStatus} 
+                  onSelectStatus={setActiveStatus} 
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>
+        )}
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 overflow-y-auto px-4 py-6">
-        <div className="max-w-2xl mx-auto space-y-4">
+      <div className={`flex-1 overflow-y-auto px-4 py-6 ${isEmployer && activeJobId ? 'bg-slate-50' : ''}`}>
+        <div className={`mx-auto space-y-4 ${isEmployer && activeJobId ? 'max-w-7xl h-full' : 'max-w-2xl'}`}>
           
           {loading ? (
             <div className="flex justify-center py-12">
               <div className="spinner" />
             </div>
+          ) : isEmployer ? (
+            /* Employer View */
+            !activeJobId ? (
+              // Job Selection Grid
+              employerJobs.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {employerJobs.map(job => (
+                    <button
+                      key={job.id}
+                      onClick={() => setActiveJobId(job.id)}
+                      className="bg-white rounded-xl border border-slate-200 p-5 text-left hover:border-brand/30 hover:shadow-md transition-all group"
+                    >
+                      <div className="flex justify-between items-start mb-2">
+                        <h3 className="font-bold text-slate-900 group-hover:text-brand transition-colors text-lg">{job.title}</h3>
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                          job.status === 'open' ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-500'
+                        }`}>
+                          {job.status}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-3 text-xs text-slate-500 font-medium">
+                        <span>{job.location || 'Remote'}</span>
+                        <span>•</span>
+                        <span className="capitalize">{job.work_type || 'Full-time'}</span>
+                      </div>
+                      <div className="mt-4 pt-4 border-t border-slate-100 flex items-center justify-between">
+                        <span className="text-xs text-slate-400">Posted {formatRelativeTime(job.created_at)}</span>
+                        <span className="text-xs font-bold text-slate-700 bg-slate-100 px-2.5 py-1 rounded-md border border-slate-200">
+                          {job.applicationCount || 0} Candidates
+                        </span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-16 px-6">
+                  <div className="mx-auto w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4">
+                    <span className="text-2xl">🏢</span>
+                  </div>
+                  <h3 className="text-slate-900 font-bold mb-2">No active jobs</h3>
+                  <p className="text-sm text-slate-500 mb-6">Create a job post to start receiving applications.</p>
+                  <button onClick={() => navigate('/jobs/new')} className="bg-brand text-white font-bold py-2 px-6 rounded-full hover:bg-brand-dark transition-colors shadow-sm">
+                    Post a Job
+                  </button>
+                </div>
+              )
+            ) : (
+              // Pipeline View for selected job
+              <EmployerPipelineView
+                applications={applications}
+                onStatusChange={handleStatusChange}
+                onViewPortfolio={(id) => navigate(`/portfolio/${id}`)}
+                onMessage={(targetUserId, jobId, jobTitle) => {
+                  const targetProfile = applications.find(a => a.candidate?.id === targetUserId)?.candidate;
+                  navigate('/messaging', { 
+                    state: { 
+                      newConversation: { targetProfile, jobId, jobTitle } 
+                    } 
+                  });
+                }}
+              />
+            )
           ) : activeTab === 'applications' ? (
             /* Applications List */
             filteredApplications.length > 0 ? (
