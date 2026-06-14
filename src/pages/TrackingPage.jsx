@@ -21,6 +21,13 @@ import EmployerPipelineView from '../components/tracking/EmployerPipelineView';
 import { formatRelativeTime } from '../lib/relativeTime';
 import { ChevronLeft } from 'lucide-react';
 
+const PIPELINE_STAGES = [
+  { id: 'applied', label: 'Applied', statuses: ['applied'] },
+  { id: 'viewed', label: 'Viewed', statuses: ['viewed'] },
+  { id: 'shortlisted', label: 'Shortlisted', statuses: ['shortlisted'] },
+  { id: 'final', label: 'Final Stage', statuses: ['pending', 'accepted', 'rejected'] },
+];
+
 export default function TrackingPage() {
   const { user, profile } = useAuth();
   const navigate = useNavigate();
@@ -71,14 +78,15 @@ export default function TrackingPage() {
   }, [user, isEmployer, activeJobId]);
 
   // Calculate pipeline counts
-  const pipelineCounts = applications.reduce((acc, app) => {
-    acc[app.status] = (acc[app.status] || 0) + 1;
+  const pipelineCounts = PIPELINE_STAGES.reduce((acc, stage) => {
+    acc[stage.id] = applications.filter(a => stage.statuses.includes(a.status)).length;
     return acc;
   }, {});
 
   // Filtered applications
-  const filteredApplications = activeStatus
-    ? applications.filter(app => app.status === activeStatus)
+  const activeStageObj = PIPELINE_STAGES.find(s => s.id === activeStatus);
+  const filteredApplications = activeStageObj
+    ? applications.filter(app => activeStageObj.statuses.includes(app.status))
     : applications;
 
   // Handlers
@@ -211,6 +219,8 @@ export default function TrackingPage() {
                   counts={pipelineCounts} 
                   activeStatus={activeStatus} 
                   onSelectStatus={setActiveStatus} 
+                  stages={PIPELINE_STAGES.map(s => s.id)}
+                  stageLabels={PIPELINE_STAGES.reduce((acc, s) => { acc[s.id] = s.label; return acc; }, {})}
                 />
               </motion.div>
             )}
