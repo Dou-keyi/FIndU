@@ -646,7 +646,7 @@ export default function PortfolioPage() {
                 return <ProfessionalLayout {...layoutProps} />;
               }
             })()}
-          </div>
+          </motion.div>
 
           {/* ── Theme Settings Side Panel ── */}
           {isOwn && showTemplateSwitcher && (
