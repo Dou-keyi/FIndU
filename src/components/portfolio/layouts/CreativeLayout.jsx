@@ -309,10 +309,11 @@ export default function CreativeLayout({
 
   return (
     <motion.div
+      layout
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
-      className="creative-resume rounded-2xl overflow-hidden shadow-2xl bg-white"
+      className="creative-resume rounded-2xl overflow-hidden shadow-2xl bg-[#f8fafc]"
     >
       {/* ════════════════════════════════
           HEADER BAND (Full-width, colored)
